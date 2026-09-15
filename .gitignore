@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset
+datasets/
+
+# Models
+models/
+
+# Outputs
+outputs/
+
+# TensorRT / ONNX
+*.engine
+*.onnx
+*.cache
