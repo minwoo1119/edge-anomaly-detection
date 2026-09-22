@@ -36,6 +36,7 @@ add_executable(
     src/MemoryBank.cpp
     src/CpuBruteForceSearch.cpp
     src/PatchCorePostprocessor.cpp
+    src/RuntimeConfig.cpp
 )
 
 target_include_directories(
