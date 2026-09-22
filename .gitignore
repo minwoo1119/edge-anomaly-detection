@@ -23,5 +23,6 @@ outputs/
 *.engine
 *.onnx
 *.cache
+*.npy
 
 *.ckpt
