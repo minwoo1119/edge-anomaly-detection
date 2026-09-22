@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
     edge_anomaly_detection
-    LANGUAGES CXX
+    LANGUAGES CXX CUDA
 )
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 find_package(OpenCV REQUIRED)
 find_package(CUDAToolkit REQUIRED)
@@ -41,6 +43,7 @@ add_executable(
     src/RuntimeConfig.cpp
     src/Benchmark.cpp
     src/NpyWriter.cpp
+    src/CudaBruteForceSearch.cu
 )
 
 target_include_directories(
@@ -83,6 +86,7 @@ if(BUILD_TESTING)
         src/CpuBruteForceSearch.cpp
         src/PatchCorePostprocessor.cpp
         src/NpyWriter.cpp
+        src/CudaBruteForceSearch.cu
     )
     target_include_directories(
         edge_runtime_tests
@@ -90,7 +94,7 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${OpenCV_INCLUDE_DIRS}
     )
-    target_link_libraries(edge_runtime_tests PRIVATE ${OpenCV_LIBS})
+    target_link_libraries(edge_runtime_tests PRIVATE ${OpenCV_LIBS} CUDA::cudart)
     if(OpenMP_CXX_FOUND)
         target_link_libraries(edge_runtime_tests PRIVATE OpenMP::OpenMP_CXX)
     endif()

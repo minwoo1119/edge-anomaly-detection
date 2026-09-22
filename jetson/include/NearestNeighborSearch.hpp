@@ -11,7 +11,6 @@ struct SearchResult {
     std::vector<std::size_t> indices;
 };
 
-
 class INearestNeighborSearch {
 public:
     virtual ~INearestNeighborSearch() = default;

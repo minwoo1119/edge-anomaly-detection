@@ -1,4 +1,5 @@
 #include "Benchmark.hpp"
+#include "CudaNearestNeighborSearch.hpp"
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
 #include "NpyWriter.hpp"
@@ -15,6 +16,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -150,7 +152,16 @@ int main(int argc, char* argv[]) {
         TensorRTInferencer inferencer(config.enginePath);
         validateTensorShapes(inferencer, config, memoryBank);
         const Preprocessor preprocessor(config.inputWidth, config.inputHeight);
-        const CpuBruteForceSearch nearestNeighborSearch;
+        const auto& outputShape = inferencer.outputShape();
+        std::unique_ptr<INearestNeighborSearch> nearestNeighborSearch;
+        if (config.nnBackend == "cuda") {
+            nearestNeighborSearch = std::make_unique<CudaBruteForceSearch>(
+                memoryBank,
+                static_cast<std::size_t>(outputShape[2] * outputShape[3])
+            );
+        } else {
+            nearestNeighborSearch = std::make_unique<CpuBruteForceSearch>();
+        }
         const PatchCorePostprocessor postprocessor(
             config.inputWidth, config.inputHeight, config.numNeighbors, config.gaussianSigma
         );
@@ -163,7 +174,7 @@ int main(int argc, char* argv[]) {
                 inferencer,
                 postprocessor,
                 memoryBank,
-                nearestNeighborSearch
+                *nearestNeighborSearch
             );
         } else {
             for (int iteration = 0; iteration < config.warmup; ++iteration) {
@@ -173,7 +184,7 @@ int main(int argc, char* argv[]) {
                     inferencer,
                     postprocessor,
                     memoryBank,
-                    nearestNeighborSearch
+                    *nearestNeighborSearch
                 );
             }
             std::vector<StageTimings> samples;
@@ -185,7 +196,7 @@ int main(int argc, char* argv[]) {
                     inferencer,
                     postprocessor,
                     memoryBank,
-                    nearestNeighborSearch
+                    *nearestNeighborSearch
                 );
                 samples.push_back(run.timings);
             }
@@ -199,7 +210,6 @@ int main(int argc, char* argv[]) {
             );
         }
 
-        const auto& outputShape = inferencer.outputShape();
         const PatchCoreResult& result = run.result;
 
         if (!commandLine.embeddingPath.empty()) {

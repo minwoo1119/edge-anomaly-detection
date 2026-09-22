@@ -107,8 +107,8 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     if (config.coresetRatio <= 0.0 || config.coresetRatio > 1.0) {
         throw std::runtime_error("coreset_ratio must be in the interval (0, 1].");
     }
-    if (config.nnBackend != "cpu") {
-        throw std::runtime_error("Only the cpu NN backend is currently available.");
+    if (config.nnBackend != "cpu" && config.nnBackend != "cuda") {
+        throw std::runtime_error("nn_backend must be either cpu or cuda.");
     }
     config.numNeighbors = static_cast<std::size_t>(numNeighbors);
     return config;

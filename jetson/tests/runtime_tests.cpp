@@ -1,3 +1,4 @@
+#include "CudaNearestNeighborSearch.hpp"
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
 #include "NpyWriter.hpp"
@@ -42,6 +43,22 @@ void testPatchLayoutAndNearestNeighbor() {
     require(std::abs(nearest.distances[1] - 1.0F) < 1e-6F, "Second nearest distance is incorrect");
 }
 
+void testCpuCudaAgreement() {
+    const MemoryBank bank({0.0F, 0.0F, 2.0F, 4.0F, -1.0F, 1.0F}, 3, 2);
+    const std::vector<float> queries{0.0F, 0.0F, 3.0F, 4.0F, -2.0F, 1.0F};
+    const CpuBruteForceSearch cpu;
+    const CudaBruteForceSearch cuda(bank, 3);
+    const SearchResult cpuResult = cpu.search(queries.data(), 3, 2, bank);
+    const SearchResult cudaResult = cuda.search(queries.data(), 3, 2, bank);
+    require(cpuResult.indices == cudaResult.indices, "CPU/CUDA nearest indices differ");
+    for (std::size_t index = 0; index < cpuResult.distances.size(); ++index) {
+        require(
+            std::abs(cpuResult.distances[index] - cudaResult.distances[index]) < 1e-5F,
+            "CPU/CUDA nearest distances differ"
+        );
+    }
+}
+
 void testPostprocessing() {
     const std::vector<float> nchw{0.0F, 3.0F, 0.0F, 4.0F};
     const MemoryBank bank({0.0F, 0.0F, 2.0F, 4.0F}, 2, 2);
@@ -58,6 +75,7 @@ int main() {
     try {
         testNpyRoundTrip();
         testPatchLayoutAndNearestNeighbor();
+        testCpuCudaAgreement();
         testPostprocessing();
         std::cout << "All runtime tests passed.\n";
         return 0;
