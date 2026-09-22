@@ -35,6 +35,7 @@ add_executable(
     src/TensorRTInferencer.cpp
     src/MemoryBank.cpp
     src/CpuBruteForceSearch.cpp
+    src/PatchCorePostprocessor.cpp
 )
 
 target_include_directories(
