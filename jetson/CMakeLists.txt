@@ -18,6 +18,8 @@ find_path(
     HINTS /usr/include/aarch64-linux-gnu /usr/include
 )
 
+include(CTest)
+
 find_library(
     TENSORRT_LIBRARY
     nvinfer
@@ -72,3 +74,25 @@ if(NOT EDGE_GIT_COMMIT)
     set(EDGE_GIT_COMMIT unknown)
 endif()
 target_compile_definitions(edge_anomaly PRIVATE EDGE_GIT_COMMIT="${EDGE_GIT_COMMIT}")
+
+if(BUILD_TESTING)
+    add_executable(
+        edge_runtime_tests
+        tests/runtime_tests.cpp
+        src/MemoryBank.cpp
+        src/CpuBruteForceSearch.cpp
+        src/PatchCorePostprocessor.cpp
+        src/NpyWriter.cpp
+    )
+    target_include_directories(
+        edge_runtime_tests
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${OpenCV_INCLUDE_DIRS}
+    )
+    target_link_libraries(edge_runtime_tests PRIVATE ${OpenCV_LIBS})
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(edge_runtime_tests PRIVATE OpenMP::OpenMP_CXX)
+    endif()
+    add_test(NAME edge_runtime_tests COMMAND edge_runtime_tests)
+endif()
