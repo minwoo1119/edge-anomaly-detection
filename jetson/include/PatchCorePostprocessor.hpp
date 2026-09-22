@@ -16,6 +16,12 @@ struct PatchCoreResult {
     std::vector<std::size_t> nearestIndices;
 };
 
+struct PostprocessTimings {
+    double reshapeMs{0.0};
+    double nearestNeighborMs{0.0};
+    double postprocessMs{0.0};
+};
+
 
 class PatchCorePostprocessor {
 public:
@@ -32,7 +38,8 @@ public:
         std::size_t featureHeight,
         std::size_t featureWidth,
         const MemoryBank& memoryBank,
-        const INearestNeighborSearch& search
+        const INearestNeighborSearch& search,
+        PostprocessTimings* timings = nullptr
     ) const;
 
     static std::vector<float> nchwToPatchMajor(

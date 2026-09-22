@@ -3,6 +3,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -138,20 +139,24 @@ PatchCoreResult PatchCorePostprocessor::process(
     std::size_t featureHeight,
     std::size_t featureWidth,
     const MemoryBank& memoryBank,
-    const INearestNeighborSearch& search
+    const INearestNeighborSearch& search,
+    PostprocessTimings* timings
 ) const {
+    const auto reshapeStart = std::chrono::steady_clock::now();
     std::vector<float> queries = nchwToPatchMajor(
         nchwEmbedding,
         channels,
         featureHeight,
         featureWidth
     );
+    const auto nearestNeighborStart = std::chrono::steady_clock::now();
     SearchResult nearest = search.search(
         queries.data(),
         featureHeight * featureWidth,
         channels,
         memoryBank
     );
+    const auto postprocessStart = std::chrono::steady_clock::now();
 
     const float score = weightedImageScore(
         queries,
@@ -191,5 +196,14 @@ PatchCoreResult PatchCorePostprocessor::process(
     result.anomalyMap = std::move(anomalyMap);
     result.patchScores = std::move(nearest.distances);
     result.nearestIndices = std::move(nearest.indices);
+    if (timings != nullptr) {
+        const auto end = std::chrono::steady_clock::now();
+        const auto milliseconds = [](const auto& start, const auto& finish) {
+            return std::chrono::duration<double, std::milli>(finish - start).count();
+        };
+        timings->reshapeMs = milliseconds(reshapeStart, nearestNeighborStart);
+        timings->nearestNeighborMs = milliseconds(nearestNeighborStart, postprocessStart);
+        timings->postprocessMs = milliseconds(postprocessStart, end);
+    }
     return result;
 }

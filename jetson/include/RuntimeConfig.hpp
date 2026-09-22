@@ -11,6 +11,13 @@ struct RuntimeConfig {
     std::string precision;
     std::string bankPrecision;
     std::string nnBackend;
+    std::string device;
+    std::string jetpack;
+    std::string cudaVersion;
+    std::string tensorrtVersion;
+    std::string opencvVersion;
+    std::string powerMode;
+    std::string runId;
     int inputWidth{0};
     int inputHeight{0};
     float threshold{0.0F};

@@ -1,3 +1,4 @@
+#include "Benchmark.hpp"
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
 #include "PatchCorePostprocessor.hpp"
@@ -9,10 +10,13 @@
 #include <opencv2/imgproc.hpp>
 
 #include <cstdlib>
+#include <chrono>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -20,6 +24,7 @@ struct CommandLine {
     std::string configPath;
     std::string imagePath;
     std::string heatmapPath;
+    std::string benchmarkCsvPath;
 };
 
 CommandLine parseCommandLine(int argc, char* argv[]) {
@@ -28,16 +33,18 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
         const std::string argument = argv[index];
         if (argument == "--help") {
             std::cout << "Usage: edge_anomaly --config <config.yaml> --image <image> "
-                      << "[--heatmap <output.png>]\n";
+                      << "[--heatmap <output.png>] [--benchmark-csv <output.csv>]\n";
             std::exit(0);
         }
-        if ((argument == "--config" || argument == "--image" || argument == "--heatmap")
+        if ((argument == "--config" || argument == "--image" || argument == "--heatmap"
+             || argument == "--benchmark-csv")
             && index + 1 >= argc) {
             throw std::invalid_argument("Missing value for argument: " + argument);
         }
         if (argument == "--config") commandLine.configPath = argv[++index];
         else if (argument == "--image") commandLine.imagePath = argv[++index];
         else if (argument == "--heatmap") commandLine.heatmapPath = argv[++index];
+        else if (argument == "--benchmark-csv") commandLine.benchmarkCsvPath = argv[++index];
         else throw std::invalid_argument("Unknown argument: " + argument);
     }
     if (commandLine.configPath.empty() || commandLine.imagePath.empty()) {
@@ -77,6 +84,52 @@ void saveHeatmap(const cv::Mat& anomalyMap, const std::string& path) {
         throw std::runtime_error("Failed to save anomaly heatmap: " + path);
     }
 }
+
+struct InferenceRun {
+    PatchCoreResult result;
+    StageTimings timings;
+};
+
+InferenceRun runInference(
+    const cv::Mat& image,
+    const Preprocessor& preprocessor,
+    TensorRTInferencer& inferencer,
+    const PatchCorePostprocessor& postprocessor,
+    const MemoryBank& memoryBank,
+    const INearestNeighborSearch& nearestNeighborSearch
+) {
+    const auto totalStart = std::chrono::steady_clock::now();
+    const auto preprocessStart = totalStart;
+    const std::vector<float> input = preprocessor.preprocess(image);
+    const auto preprocessEnd = std::chrono::steady_clock::now();
+    TensorRTTimings trtTimings;
+    const std::vector<float> embedding = inferencer.infer(input, &trtTimings);
+    const auto& outputShape = inferencer.outputShape();
+    PostprocessTimings postprocessTimings;
+    PatchCoreResult result = postprocessor.process(
+        embedding,
+        static_cast<std::size_t>(outputShape[1]),
+        static_cast<std::size_t>(outputShape[2]),
+        static_cast<std::size_t>(outputShape[3]),
+        memoryBank,
+        nearestNeighborSearch,
+        &postprocessTimings
+    );
+    const auto totalEnd = std::chrono::steady_clock::now();
+    const auto milliseconds = [](const auto& start, const auto& end) {
+        return std::chrono::duration<double, std::milli>(end - start).count();
+    };
+    StageTimings timings;
+    timings.preprocessMs = milliseconds(preprocessStart, preprocessEnd);
+    timings.h2dMs = trtTimings.h2dMs;
+    timings.trtMs = trtTimings.inferenceMs;
+    timings.d2hMs = trtTimings.d2hMs;
+    timings.reshapeMs = postprocessTimings.reshapeMs;
+    timings.nnMs = postprocessTimings.nearestNeighborMs;
+    timings.postprocessMs = postprocessTimings.postprocessMs;
+    timings.totalMs = milliseconds(totalStart, totalEnd);
+    return {std::move(result), timings};
+}
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -95,17 +148,52 @@ int main(int argc, char* argv[]) {
             config.inputWidth, config.inputHeight, config.numNeighbors, config.gaussianSigma
         );
 
-        const std::vector<float> input = preprocessor.preprocess(image);
-        const std::vector<float> embedding = inferencer.infer(input);
+        InferenceRun run;
+        if (commandLine.benchmarkCsvPath.empty()) {
+            run = runInference(
+                image,
+                preprocessor,
+                inferencer,
+                postprocessor,
+                memoryBank,
+                nearestNeighborSearch
+            );
+        } else {
+            for (int iteration = 0; iteration < config.warmup; ++iteration) {
+                runInference(
+                    image,
+                    preprocessor,
+                    inferencer,
+                    postprocessor,
+                    memoryBank,
+                    nearestNeighborSearch
+                );
+            }
+            std::vector<StageTimings> samples;
+            samples.reserve(static_cast<std::size_t>(config.repeats));
+            for (int iteration = 0; iteration < config.repeats; ++iteration) {
+                run = runInference(
+                    image,
+                    preprocessor,
+                    inferencer,
+                    postprocessor,
+                    memoryBank,
+                    nearestNeighborSearch
+                );
+                samples.push_back(run.timings);
+            }
+            printBenchmarkSummary(samples);
+            writeBenchmarkCsv(
+                commandLine.benchmarkCsvPath,
+                config,
+                samples,
+                memoryBank.sizeBytes(),
+                static_cast<std::size_t>(std::filesystem::file_size(config.enginePath))
+            );
+        }
+
         const auto& outputShape = inferencer.outputShape();
-        const PatchCoreResult result = postprocessor.process(
-            embedding,
-            static_cast<std::size_t>(outputShape[1]),
-            static_cast<std::size_t>(outputShape[2]),
-            static_cast<std::size_t>(outputShape[3]),
-            memoryBank,
-            nearestNeighborSearch
-        );
+        const PatchCoreResult& result = run.result;
 
         if (!commandLine.heatmapPath.empty()) saveHeatmap(result.anomalyMap, commandLine.heatmapPath);
         std::cout << "category=" << config.category << '\n'

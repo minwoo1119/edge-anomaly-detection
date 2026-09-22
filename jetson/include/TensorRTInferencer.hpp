@@ -10,6 +10,11 @@
 #include <string>
 #include <vector>
 
+struct TensorRTTimings {
+    double h2dMs{0.0};
+    double inferenceMs{0.0};
+    double d2hMs{0.0};
+};
 
 class TensorRTInferencer {
 public:
@@ -18,7 +23,10 @@ public:
     TensorRTInferencer(const TensorRTInferencer&) = delete;
     TensorRTInferencer& operator=(const TensorRTInferencer&) = delete;
 
-    std::vector<float> infer(const std::vector<float>& input);
+    std::vector<float> infer(
+        const std::vector<float>& input,
+        TensorRTTimings* timings = nullptr
+    );
 
     const std::vector<std::int64_t>& inputShape() const noexcept;
     const std::vector<std::int64_t>& outputShape() const noexcept;
@@ -48,4 +56,8 @@ private:
     CudaBuffer inputBuffer_;
     CudaBuffer outputBuffer_;
     CudaStream stream_;
+    CudaEvent h2dStart_;
+    CudaEvent h2dEnd_;
+    CudaEvent inferenceEnd_;
+    CudaEvent d2hEnd_;
 };

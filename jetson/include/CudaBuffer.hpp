@@ -105,3 +105,36 @@ public:
 private:
     cudaStream_t stream_{nullptr};
 };
+
+
+class CudaEvent {
+public:
+    CudaEvent() {
+        checkCuda(cudaEventCreate(&event_), "cudaEventCreate failed");
+    }
+
+    ~CudaEvent() {
+        if (event_ != nullptr) {
+            cudaEventDestroy(event_);
+        }
+    }
+
+    CudaEvent(const CudaEvent&) = delete;
+    CudaEvent& operator=(const CudaEvent&) = delete;
+
+    void record(cudaStream_t stream) {
+        checkCuda(cudaEventRecord(event_, stream), "cudaEventRecord failed");
+    }
+
+    static float elapsedMilliseconds(const CudaEvent& start, const CudaEvent& end) {
+        float milliseconds = 0.0F;
+        checkCuda(
+            cudaEventElapsedTime(&milliseconds, start.event_, end.event_),
+            "cudaEventElapsedTime failed"
+        );
+        return milliseconds;
+    }
+
+private:
+    cudaEvent_t event_{nullptr};
+};

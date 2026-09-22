@@ -83,6 +83,13 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     config.precision = required(values, "precision");
     config.bankPrecision = required(values, "bank_precision");
     config.nnBackend = required(values, "nn_backend");
+    config.device = required(values, "device");
+    config.jetpack = required(values, "jetpack");
+    config.cudaVersion = required(values, "cuda_version");
+    config.tensorrtVersion = required(values, "tensorrt_version");
+    config.opencvVersion = required(values, "opencv_version");
+    config.powerMode = required(values, "power_mode");
+    config.runId = required(values, "run_id");
     config.inputWidth = parseInt(required(values, "input_width"), "input_width");
     config.inputHeight = parseInt(required(values, "input_height"), "input_height");
     config.threshold = static_cast<float>(parseDouble(required(values, "threshold"), "threshold"));

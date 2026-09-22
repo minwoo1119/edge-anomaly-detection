@@ -6,6 +6,13 @@ model: patchcore_wide_resnet50_2
 precision: fp32
 bank_precision: fp32
 nn_backend: cpu
+device: jetson_orin_nano
+jetpack: unknown
+cuda_version: 12.6
+tensorrt_version: 10.3.0.30
+opencv_version: 4.8.0
+power_mode: unknown
+run_id: run01
 input_width: 256
 input_height: 256
 threshold: 0.5

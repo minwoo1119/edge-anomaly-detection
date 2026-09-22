@@ -143,7 +143,8 @@ TensorRTInferencer::TensorRTInferencer(const std::string& enginePath) {
 
 
 std::vector<float> TensorRTInferencer::infer(
-    const std::vector<float>& input
+    const std::vector<float>& input,
+    TensorRTTimings* timings
 ) {
     if (input.size() != inputElements_) {
         throw std::invalid_argument(
@@ -152,6 +153,7 @@ std::vector<float> TensorRTInferencer::infer(
     }
 
     std::vector<float> output(outputElements_);
+    h2dStart_.record(stream_.get());
     checkCuda(
         cudaMemcpyAsync(
             inputBuffer_.data(),
@@ -162,10 +164,12 @@ std::vector<float> TensorRTInferencer::infer(
         ),
         "Input cudaMemcpyAsync failed"
     );
+    h2dEnd_.record(stream_.get());
 
     if (!context_->enqueueV3(stream_.get())) {
         throw std::runtime_error("TensorRT enqueueV3 failed.");
     }
+    inferenceEnd_.record(stream_.get());
 
     checkCuda(
         cudaMemcpyAsync(
@@ -177,7 +181,13 @@ std::vector<float> TensorRTInferencer::infer(
         ),
         "Output cudaMemcpyAsync failed"
     );
+    d2hEnd_.record(stream_.get());
     checkCuda(cudaStreamSynchronize(stream_.get()), "CUDA stream sync failed");
+    if (timings != nullptr) {
+        timings->h2dMs = CudaEvent::elapsedMilliseconds(h2dStart_, h2dEnd_);
+        timings->inferenceMs = CudaEvent::elapsedMilliseconds(h2dEnd_, inferenceEnd_);
+        timings->d2hMs = CudaEvent::elapsedMilliseconds(inferenceEnd_, d2hEnd_);
+    }
     return output;
 }
 

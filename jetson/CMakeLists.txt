@@ -37,6 +37,7 @@ add_executable(
     src/CpuBruteForceSearch.cpp
     src/PatchCorePostprocessor.cpp
     src/RuntimeConfig.cpp
+    src/Benchmark.cpp
 )
 
 target_include_directories(
@@ -58,3 +59,15 @@ target_link_libraries(
 if(OpenMP_CXX_FOUND)
     target_link_libraries(edge_anomaly PRIVATE OpenMP::OpenMP_CXX)
 endif()
+
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+    OUTPUT_VARIABLE EDGE_GIT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT EDGE_GIT_COMMIT)
+    set(EDGE_GIT_COMMIT unknown)
+endif()
+target_compile_definitions(edge_anomaly PRIVATE EDGE_GIT_COMMIT="${EDGE_GIT_COMMIT}")
