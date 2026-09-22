@@ -38,6 +38,7 @@ add_executable(
     src/PatchCorePostprocessor.cpp
     src/RuntimeConfig.cpp
     src/Benchmark.cpp
+    src/NpyWriter.cpp
 )
 
 target_include_directories(

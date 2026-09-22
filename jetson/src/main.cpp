@@ -1,6 +1,7 @@
 #include "Benchmark.hpp"
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
+#include "NpyWriter.hpp"
 #include "PatchCorePostprocessor.hpp"
 #include "Preprocessor.hpp"
 #include "RuntimeConfig.hpp"
@@ -25,6 +26,8 @@ struct CommandLine {
     std::string imagePath;
     std::string heatmapPath;
     std::string benchmarkCsvPath;
+    std::string embeddingPath;
+    std::string anomalyMapPath;
 };
 
 CommandLine parseCommandLine(int argc, char* argv[]) {
@@ -33,18 +36,21 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
         const std::string argument = argv[index];
         if (argument == "--help") {
             std::cout << "Usage: edge_anomaly --config <config.yaml> --image <image> "
-                      << "[--heatmap <output.png>] [--benchmark-csv <output.csv>]\n";
+                      << "[--heatmap <output.png>] [--benchmark-csv <output.csv>] "
+                      << "[--dump-embedding <output.npy>] [--dump-map <output.npy>]\n";
             std::exit(0);
         }
         if ((argument == "--config" || argument == "--image" || argument == "--heatmap"
-             || argument == "--benchmark-csv")
-            && index + 1 >= argc) {
+             || argument == "--benchmark-csv" || argument == "--dump-embedding"
+             || argument == "--dump-map") && index + 1 >= argc) {
             throw std::invalid_argument("Missing value for argument: " + argument);
         }
         if (argument == "--config") commandLine.configPath = argv[++index];
         else if (argument == "--image") commandLine.imagePath = argv[++index];
         else if (argument == "--heatmap") commandLine.heatmapPath = argv[++index];
         else if (argument == "--benchmark-csv") commandLine.benchmarkCsvPath = argv[++index];
+        else if (argument == "--dump-embedding") commandLine.embeddingPath = argv[++index];
+        else if (argument == "--dump-map") commandLine.anomalyMapPath = argv[++index];
         else throw std::invalid_argument("Unknown argument: " + argument);
     }
     if (commandLine.configPath.empty() || commandLine.imagePath.empty()) {
@@ -88,6 +94,7 @@ void saveHeatmap(const cv::Mat& anomalyMap, const std::string& path) {
 struct InferenceRun {
     PatchCoreResult result;
     StageTimings timings;
+    std::vector<float> embedding;
 };
 
 InferenceRun runInference(
@@ -103,7 +110,7 @@ InferenceRun runInference(
     const std::vector<float> input = preprocessor.preprocess(image);
     const auto preprocessEnd = std::chrono::steady_clock::now();
     TensorRTTimings trtTimings;
-    const std::vector<float> embedding = inferencer.infer(input, &trtTimings);
+    std::vector<float> embedding = inferencer.infer(input, &trtTimings);
     const auto& outputShape = inferencer.outputShape();
     PostprocessTimings postprocessTimings;
     PatchCoreResult result = postprocessor.process(
@@ -128,7 +135,7 @@ InferenceRun runInference(
     timings.nnMs = postprocessTimings.nearestNeighborMs;
     timings.postprocessMs = postprocessTimings.postprocessMs;
     timings.totalMs = milliseconds(totalStart, totalEnd);
-    return {std::move(result), timings};
+    return {std::move(result), timings, std::move(embedding)};
 }
 }  // namespace
 
@@ -194,6 +201,34 @@ int main(int argc, char* argv[]) {
 
         const auto& outputShape = inferencer.outputShape();
         const PatchCoreResult& result = run.result;
+
+        if (!commandLine.embeddingPath.empty()) {
+            writeFloatNpy(
+                commandLine.embeddingPath,
+                run.embedding.data(),
+                run.embedding.size(),
+                {
+                    1,
+                    static_cast<std::size_t>(outputShape[1]),
+                    static_cast<std::size_t>(outputShape[2]),
+                    static_cast<std::size_t>(outputShape[3])
+                }
+            );
+        }
+        if (!commandLine.anomalyMapPath.empty()) {
+            if (!result.anomalyMap.isContinuous()) {
+                throw std::runtime_error("Anomaly map output is not contiguous.");
+            }
+            writeFloatNpy(
+                commandLine.anomalyMapPath,
+                result.anomalyMap.ptr<float>(),
+                result.anomalyMap.total(),
+                {
+                    static_cast<std::size_t>(result.anomalyMap.rows),
+                    static_cast<std::size_t>(result.anomalyMap.cols)
+                }
+            );
+        }
 
         if (!commandLine.heatmapPath.empty()) saveHeatmap(result.anomalyMap, commandLine.heatmapPath);
         std::cout << "category=" << config.category << '\n'
