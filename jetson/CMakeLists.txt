@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(OpenCV REQUIRED)
 find_package(CUDAToolkit REQUIRED)
+find_package(OpenMP)
 
 find_path(
     TENSORRT_INCLUDE_DIR
@@ -32,6 +33,8 @@ add_executable(
     src/main.cpp
     src/Preprocessor.cpp
     src/TensorRTInferencer.cpp
+    src/MemoryBank.cpp
+    src/CpuBruteForceSearch.cpp
 )
 
 target_include_directories(
@@ -49,3 +52,7 @@ target_link_libraries(
     ${TENSORRT_LIBRARY}
     CUDA::cudart
 )
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(edge_anomaly PRIVATE OpenMP::OpenMP_CXX)
+endif()
