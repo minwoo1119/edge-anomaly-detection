@@ -1,12 +1,13 @@
 #!/bin/bash
-
-set -e
+set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 ONNX_MODEL="${PROJECT_ROOT}/models/patchcore_feature_extractor.onnx"
 
 ENGINE_MODEL="${PROJECT_ROOT}/models/patchcore_feature_extractor_fp32.engine"
+ENGINE_MANIFEST="${ENGINE_MODEL}.json"
+EXPORT_MANIFEST="${PROJECT_ROOT}/models/patchcore_export_manifest.json"
 
 echo "======================================"
 echo " PatchCore TensorRT FP32 Build"
@@ -22,10 +23,12 @@ if [ ! -f "${ONNX_MODEL}" ]; then
     exit 1
 fi
 
-if [ ! -f "${ONNX_MODEL}.data" ]; then
-    echo
-    echo "ERROR: ONNX external data not found."
-    echo "${ONNX_MODEL}.data"
+if [[ -e "${ENGINE_MODEL}" || -e "${ENGINE_MANIFEST}" ]]; then
+    echo "ERROR: refusing to overwrite engine or manifest." >&2
+    exit 1
+fi
+if [[ ! -f "${EXPORT_MANIFEST}" ]]; then
+    echo "ERROR: export manifest not found: ${EXPORT_MANIFEST}" >&2
     exit 1
 fi
 
@@ -45,7 +48,16 @@ echo
 
 "${TRTEXEC}" \
     --onnx="${ONNX_MODEL}" \
-    --saveEngine="${ENGINE_MODEL}"
+    --saveEngine="${ENGINE_MODEL}" \
+    --skipInference
+
+python3 "${PROJECT_ROOT}/jetson/scripts/write_engine_manifest.py" \
+    --onnx "${ONNX_MODEL}" \
+    --engine "${ENGINE_MODEL}" \
+    --precision fp32 \
+    --trtexec "${TRTEXEC}" \
+    --output "${ENGINE_MANIFEST}" \
+    --export-manifest "${EXPORT_MANIFEST}"
 
 echo
 echo "======================================"

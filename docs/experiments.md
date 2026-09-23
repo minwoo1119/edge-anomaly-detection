@@ -13,6 +13,33 @@
 
 ---
 
+## Reproducible Python baseline
+
+학습은 `train/good`만 사용하며 checkpoint reload 시 memory bank가 exact match하는 경우에만 완료됩니다.
+
+```bash
+python src/train.py \
+  --dataset-root datasets/MVTecAD \
+  --category bottle \
+  --checkpoint models/patchcore_bottle.ckpt \
+  --manifest results/metadata/train_bottle.json
+```
+
+평가는 고정 checkpoint에 대해 별도로 수행합니다. Test set에서는 AUROC만 primary metric으로 사용하며 test-derived F1 threshold를 deployment config로 내보내지 않습니다.
+
+```bash
+python src/evaluate.py \
+  --checkpoint models/patchcore_bottle.ckpt \
+  --dataset-root datasets/MVTecAD \
+  --category bottle \
+  --output-csv results/csv/accuracy.csv \
+  --manifest results/metadata/evaluate_bottle.json
+```
+
+Training/evaluation manifest에는 checkpoint와 dataset fingerprint, 실제 package version을 기록합니다.
+
+---
+
 ## 2. Primary Variables
 
 Precision:

@@ -11,6 +11,7 @@
 - `development_roadmap.md` — 현재 상태부터 논문 완성까지 단계별 개발 로드맵
 - `experiments.md` — 논문용 실험 설계와 ablation
 - `benchmarking.md` — latency / FPS / memory / power / AUROC 측정 규칙
+- `colab_handoff.md` — Colab checkpoint/dataset 기반 artifact 생성 및 전달 절차
 - `cpp_cuda_optimization.md` — C++17 / CUDA / memory / async / NN 최적화 계획
 - `jetson_deployment.md` — Jetson Orin Nano 배포 및 빌드 절차
 - `paper_plan.md` — 논문 가설, 기여점, figure/table 및 섹션 구성
