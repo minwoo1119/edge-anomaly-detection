@@ -2,6 +2,20 @@
 
 Dataset과 checkpoint가 Colab에만 있는 경우 학습을 반복하지 않고, 동일 checkpoint에서 평가·export·calibration/reference 생성을 수행한 뒤 검증 가능한 bundle로 전달합니다.
 
+## 가장 간단한 실행 방법
+
+아래 명령 하나가 평가, ONNX/Memory Bank export, INT8 calibration tensor, 정상/이상 correctness reference와 ZIP bundle 생성을 순서대로 수행합니다.
+
+```bash
+python src/run_colab_pipeline.py \
+  --checkpoint models/patchcore_bottle.ckpt \
+  --dataset-root datasets/MVTecAD \
+  --category bottle \
+  --output-root outputs/colab_bottle_run01
+```
+
+출력 디렉터리는 매 실행마다 비어 있는 새 경로를 사용합니다. 아래 개별 단계는 실패 지점을 따로 재현하거나 설정을 변경해야 할 때 사용합니다.
+
 ## 1. Colab repository 동기화
 
 ```bash
