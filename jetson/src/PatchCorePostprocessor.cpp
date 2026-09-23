@@ -29,8 +29,8 @@ PatchCorePostprocessor::PatchCorePostprocessor(
     if (numNeighbors_ == 0) {
         throw std::invalid_argument("PatchCore numNeighbors must be positive.");
     }
-    if (gaussianSigma_ < 0.0) {
-        throw std::invalid_argument("Gaussian sigma cannot be negative.");
+    if (!std::isfinite(gaussianSigma_) || gaussianSigma_ < 0.0) {
+        throw std::invalid_argument("Gaussian sigma must be finite and non-negative.");
     }
 }
 
@@ -178,13 +178,14 @@ PatchCoreResult PatchCorePostprocessor::process(
         cv::Size(outputWidth_, outputHeight_),
         0.0,
         0.0,
-        cv::INTER_LINEAR
+        cv::INTER_NEAREST
     );
     if (gaussianSigma_ > 0.0) {
+        const int kernelSize = 2 * static_cast<int>(4.0 * gaussianSigma_ + 0.5) + 1;
         cv::GaussianBlur(
             anomalyMap,
             anomalyMap,
-            cv::Size(0, 0),
+            cv::Size(kernelSize, kernelSize),
             gaussianSigma_,
             gaussianSigma_,
             cv::BORDER_REFLECT_101
@@ -194,6 +195,7 @@ PatchCoreResult PatchCorePostprocessor::process(
     PatchCoreResult result;
     result.score = score;
     result.anomalyMap = std::move(anomalyMap);
+    result.patchEmbeddings = std::move(queries);
     result.patchScores = std::move(nearest.distances);
     result.nearestIndices = std::move(nearest.indices);
     if (timings != nullptr) {

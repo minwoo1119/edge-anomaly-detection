@@ -1,3 +1,4 @@
+# OpenMP CPU baseline. Keep all other fields identical to jetson_fp32.yaml.
 engine_path: models/patchcore_feature_extractor_fp32.engine
 memory_bank_path: models/patchcore_memory_bank.npy
 engine_manifest_path: models/patchcore_feature_extractor_fp32.engine.json
@@ -6,14 +7,14 @@ category: bottle
 model: patchcore_wide_resnet50_2
 precision: fp32
 bank_precision: fp32
-nn_backend: cuda
+nn_backend: openmp
 device: jetson_orin_nano
 jetpack: unknown
 cuda_version: 12.6
 tensorrt_version: 10.3.0.30
 opencv_version: 4.8.0
 power_mode: unknown
-run_id: run01
+run_id: overridden_by_benchmark_runner
 input_width: 256
 input_height: 256
 decision_enabled: false

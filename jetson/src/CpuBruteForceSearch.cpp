@@ -5,6 +5,16 @@
 #include <limits>
 #include <stdexcept>
 
+#ifndef EDGE_HAS_OPENMP
+#define EDGE_HAS_OPENMP 0
+#endif
+
+CpuBruteForceSearch::CpuBruteForceSearch(bool parallel)
+    : parallel_(parallel) {
+    if (parallel_ && EDGE_HAS_OPENMP == 0) {
+        throw std::runtime_error("OpenMP NN backend was requested but OpenMP is not available.");
+    }
+}
 
 SearchResult CpuBruteForceSearch::search(
     const float* queries,
@@ -25,7 +35,7 @@ SearchResult CpuBruteForceSearch::search(
     result.distances.resize(queryCount);
     result.indices.resize(queryCount);
 
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for if(parallel_) schedule(static)
     for (std::ptrdiff_t queryIndex = 0;
          queryIndex < static_cast<std::ptrdiff_t>(queryCount);
          ++queryIndex) {

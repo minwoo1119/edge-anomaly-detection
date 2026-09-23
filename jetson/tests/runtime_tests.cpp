@@ -3,10 +3,14 @@
 #include "NearestNeighborSearch.hpp"
 #include "NpyWriter.hpp"
 #include "PatchCorePostprocessor.hpp"
+#include "Preprocessor.hpp"
+
+#include <opencv2/core.hpp>
 
 #include <cmath>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -24,6 +28,24 @@ void testNpyRoundTrip() {
     std::filesystem::remove(path);
     require(bank.rows() == 2 && bank.dimensions() == 3, "NPY shape round-trip failed");
     require(bank.values() == values, "NPY values round-trip failed");
+}
+
+void testPreprocessorChannelOrderAndNormalization() {
+    const cv::Mat image(1, 1, CV_8UC3, cv::Scalar(0, 128, 255));
+    const Preprocessor preprocessor(1, 1);
+    const std::vector<float> tensor = preprocessor.preprocess(image);
+    require(tensor.size() == 3, "Preprocessor output shape is incorrect");
+    const std::vector<float> expected{
+        (1.0F - 0.485F) / 0.229F,
+        ((128.0F / 255.0F) - 0.456F) / 0.224F,
+        (0.0F - 0.406F) / 0.225F,
+    };
+    for (std::size_t index = 0; index < expected.size(); ++index) {
+        require(
+            std::abs(tensor[index] - expected[index]) < 1e-6F,
+            "Preprocessor channel order or normalization is incorrect"
+        );
+    }
 }
 
 void testPatchLayoutAndNearestNeighbor() {
@@ -59,6 +81,28 @@ void testCpuCudaAgreement() {
     }
 }
 
+void testCpuCudaTieBreaking() {
+    const MemoryBank bank({1.0F, 2.0F, 1.0F, 2.0F, 4.0F, 5.0F}, 3, 2);
+    const std::vector<float> queries{1.0F, 2.0F};
+    const CpuBruteForceSearch cpu;
+    const CudaBruteForceSearch cuda(bank, 1);
+    const SearchResult cpuResult = cpu.search(queries.data(), 1, 2, bank);
+    const SearchResult cudaResult = cuda.search(queries.data(), 1, 2, bank);
+    require(cpuResult.indices[0] == 0, "CPU tie-breaking must select the lowest bank index");
+    require(cudaResult.indices[0] == 0, "CUDA tie-breaking must select the lowest bank index");
+}
+
+void testMemoryBankRejectsNonFiniteValues() {
+    bool rejected = false;
+    try {
+        const MemoryBank bank({0.0F, std::numeric_limits<float>::infinity()}, 1, 2);
+        (void)bank;
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected, "Memory bank must reject non-finite values");
+}
+
 void testPostprocessing() {
     const std::vector<float> nchw{0.0F, 3.0F, 0.0F, 4.0F};
     const MemoryBank bank({0.0F, 0.0F, 2.0F, 4.0F}, 2, 2);
@@ -68,14 +112,27 @@ void testPostprocessing() {
     require(std::abs(result.score - 1.0F) < 1e-6F, "Image score is incorrect");
     require(result.anomalyMap.rows == 2 && result.anomalyMap.cols == 4, "Anomaly map shape is incorrect");
     require(result.patchScores.size() == 2, "Patch score count is incorrect");
+    require(
+        result.patchEmbeddings == std::vector<float>({0.0F, 0.0F, 3.0F, 4.0F}),
+        "Postprocessor did not preserve patch-major embeddings"
+    );
+    for (int row = 0; row < result.anomalyMap.rows; ++row) {
+        require(std::abs(result.anomalyMap.at<float>(row, 0) - 0.0F) < 1e-6F, "Nearest map resize is incorrect");
+        require(std::abs(result.anomalyMap.at<float>(row, 1) - 0.0F) < 1e-6F, "Nearest map resize is incorrect");
+        require(std::abs(result.anomalyMap.at<float>(row, 2) - 1.0F) < 1e-6F, "Nearest map resize is incorrect");
+        require(std::abs(result.anomalyMap.at<float>(row, 3) - 1.0F) < 1e-6F, "Nearest map resize is incorrect");
+    }
 }
 }  // namespace
 
 int main() {
     try {
         testNpyRoundTrip();
+        testPreprocessorChannelOrderAndNormalization();
         testPatchLayoutAndNearestNeighbor();
         testCpuCudaAgreement();
+        testCpuCudaTieBreaking();
+        testMemoryBankRejectsNonFiniteValues();
         testPostprocessing();
         std::cout << "All runtime tests passed.\n";
         return 0;

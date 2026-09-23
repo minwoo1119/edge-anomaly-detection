@@ -1,6 +1,8 @@
 # Flat YAML keeps the Jetson runtime free of a YAML library dependency.
 engine_path: models/patchcore_feature_extractor_fp32.engine
 memory_bank_path: models/patchcore_memory_bank.npy
+engine_manifest_path: models/patchcore_feature_extractor_fp32.engine.json
+export_manifest_path: models/patchcore_export_manifest.json
 category: bottle
 model: patchcore_wide_resnet50_2
 precision: fp32
@@ -15,7 +17,10 @@ power_mode: unknown
 run_id: run01
 input_width: 256
 input_height: 256
-threshold: 0.5
+decision_enabled: false
+threshold: 0.0
+threshold_space: raw
+threshold_source: unset
 coreset_ratio: 0.10
 num_neighbors: 9
 gaussian_sigma: 4.0

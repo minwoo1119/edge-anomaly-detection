@@ -26,11 +26,24 @@ struct SummaryStatistics {
     double p95{0.0};
 };
 
+struct BenchmarkMetadata {
+    std::string configPath;
+    std::string imagePath;
+    std::string configSha256;
+    std::string imageSha256;
+    std::string engineSha256;
+    std::string memoryBankSha256;
+};
+
 SummaryStatistics summarize(const std::vector<double>& values);
 void printBenchmarkSummary(const std::vector<StageTimings>& samples);
+const char* benchmarkBuildType() noexcept;
+const char* benchmarkGitCommit() noexcept;
+bool benchmarkGitDirty() noexcept;
 void writeBenchmarkCsv(
     const std::string& path,
     const RuntimeConfig& config,
+    const BenchmarkMetadata& metadata,
     const std::vector<StageTimings>& samples,
     std::size_t memoryBankBytes,
     std::size_t engineBytes

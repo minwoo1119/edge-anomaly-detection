@@ -26,10 +26,15 @@ public:
 
 class CpuBruteForceSearch final : public INearestNeighborSearch {
 public:
+    explicit CpuBruteForceSearch(bool parallel = false);
+
     SearchResult search(
         const float* queries,
         std::size_t queryCount,
         std::size_t dimensions,
         const MemoryBank& memoryBank
     ) const override;
+
+private:
+    bool parallel_{false};
 };

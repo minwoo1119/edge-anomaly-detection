@@ -1,6 +1,7 @@
 #include "MemoryBank.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -179,6 +180,11 @@ MemoryBank::MemoryBank(
       dimensions_(dimensions) {
     if (values_.size() != checkedElementCount(rows_, dimensions_)) {
         throw std::invalid_argument("Memory bank values do not match its shape.");
+    }
+    for (const float value : values_) {
+        if (!std::isfinite(value)) {
+            throw std::invalid_argument("Memory bank contains NaN or infinity.");
+        }
     }
 }
 

@@ -8,11 +8,14 @@
 #include <sstream>
 #include <stdexcept>
 
-void writeFloatNpy(
+namespace {
+void writeNpy(
     const std::string& path,
-    const float* values,
+    const void* values,
     std::size_t count,
-    const std::vector<std::size_t>& shape
+    const std::vector<std::size_t>& shape,
+    const std::string& descriptor,
+    std::size_t itemSize
 ) {
     if (values == nullptr || shape.empty()) {
         throw std::invalid_argument("NumPy output values and shape must be non-empty.");
@@ -37,7 +40,7 @@ void writeFloatNpy(
     if (shape.size() == 1) shapeText << ',';
     shapeText << ')';
 
-    std::string header = "{'descr': '<f4', 'fortran_order': False, 'shape': "
+    std::string header = "{'descr': '" + descriptor + "', 'fortran_order': False, 'shape': "
         + shapeText.str() + ", }";
     constexpr std::size_t preambleSize = 10;
     const std::size_t padding = (16 - ((preambleSize + header.size() + 1) % 16)) % 16;
@@ -60,6 +63,31 @@ void writeFloatNpy(
     };
     output.write(reinterpret_cast<const char*>(length), sizeof(length));
     output.write(header.data(), static_cast<std::streamsize>(header.size()));
-    output.write(reinterpret_cast<const char*>(values), static_cast<std::streamsize>(count * sizeof(float)));
+    if (count > static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max()) / itemSize) {
+        throw std::overflow_error("NumPy payload is too large.");
+    }
+    output.write(
+        reinterpret_cast<const char*>(values),
+        static_cast<std::streamsize>(count * itemSize)
+    );
     if (!output) throw std::runtime_error("Failed to write NumPy output: " + path);
+}
+}  // namespace
+
+void writeFloatNpy(
+    const std::string& path,
+    const float* values,
+    std::size_t count,
+    const std::vector<std::size_t>& shape
+) {
+    writeNpy(path, values, count, shape, "<f4", sizeof(float));
+}
+
+void writeUint64Npy(
+    const std::string& path,
+    const std::uint64_t* values,
+    std::size_t count,
+    const std::vector<std::size_t>& shape
+) {
+    writeNpy(path, values, count, shape, "<u8", sizeof(std::uint64_t));
 }

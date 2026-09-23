@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -71,6 +72,12 @@ double parseDouble(const std::string& value, const std::string& key) {
     if (parsed != value.size()) throw std::runtime_error("Config key is not numeric: " + key);
     return result;
 }
+
+bool parseBool(const std::string& value, const std::string& key) {
+    if (value == "true") return true;
+    if (value == "false") return false;
+    throw std::runtime_error("Config key must be true or false: " + key);
+}
 }  // namespace
 
 RuntimeConfig RuntimeConfig::load(const std::string& path) {
@@ -90,9 +97,12 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     config.opencvVersion = required(values, "opencv_version");
     config.powerMode = required(values, "power_mode");
     config.runId = required(values, "run_id");
+    config.thresholdSpace = required(values, "threshold_space");
+    config.thresholdSource = required(values, "threshold_source");
     config.inputWidth = parseInt(required(values, "input_width"), "input_width");
     config.inputHeight = parseInt(required(values, "input_height"), "input_height");
     config.threshold = static_cast<float>(parseDouble(required(values, "threshold"), "threshold"));
+    config.decisionEnabled = parseBool(required(values, "decision_enabled"), "decision_enabled");
     config.coresetRatio = parseDouble(required(values, "coreset_ratio"), "coreset_ratio");
     const int numNeighbors = parseInt(required(values, "num_neighbors"), "num_neighbors");
     config.gaussianSigma = parseDouble(required(values, "gaussian_sigma"), "gaussian_sigma");
@@ -107,8 +117,22 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     if (config.coresetRatio <= 0.0 || config.coresetRatio > 1.0) {
         throw std::runtime_error("coreset_ratio must be in the interval (0, 1].");
     }
-    if (config.nnBackend != "cpu" && config.nnBackend != "cuda") {
-        throw std::runtime_error("nn_backend must be either cpu or cuda.");
+    if (!std::isfinite(config.threshold)) {
+        throw std::runtime_error("threshold must be finite.");
+    }
+    if (config.thresholdSpace != "raw") {
+        throw std::runtime_error("Only raw PatchCore score thresholds are currently supported.");
+    }
+    if (config.decisionEnabled
+        && config.thresholdSource != "train_normal"
+        && config.thresholdSource != "validation"
+        && config.thresholdSource != "external") {
+        throw std::runtime_error(
+            "Enabled decisions require threshold_source=train_normal, validation, or external."
+        );
+    }
+    if (config.nnBackend != "cpu" && config.nnBackend != "openmp" && config.nnBackend != "cuda") {
+        throw std::runtime_error("nn_backend must be cpu, openmp, or cuda.");
     }
     config.numNeighbors = static_cast<std::size_t>(numNeighbors);
     return config;

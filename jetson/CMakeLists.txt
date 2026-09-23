@@ -64,10 +64,11 @@ target_link_libraries(
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(edge_anomaly PRIVATE OpenMP::OpenMP_CXX)
+    target_compile_definitions(edge_anomaly PRIVATE EDGE_HAS_OPENMP=1)
 endif()
 
 execute_process(
-    COMMAND git rev-parse --short HEAD
+    COMMAND git rev-parse HEAD
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
     OUTPUT_VARIABLE EDGE_GIT_COMMIT
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -76,7 +77,25 @@ execute_process(
 if(NOT EDGE_GIT_COMMIT)
     set(EDGE_GIT_COMMIT unknown)
 endif()
-target_compile_definitions(edge_anomaly PRIVATE EDGE_GIT_COMMIT="${EDGE_GIT_COMMIT}")
+execute_process(
+    COMMAND git status --porcelain
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+    OUTPUT_VARIABLE EDGE_GIT_STATUS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(EDGE_GIT_STATUS)
+    set(EDGE_GIT_DIRTY 1)
+else()
+    set(EDGE_GIT_DIRTY 0)
+endif()
+target_compile_definitions(
+    edge_anomaly
+    PRIVATE
+    EDGE_GIT_COMMIT="${EDGE_GIT_COMMIT}"
+    EDGE_GIT_DIRTY=${EDGE_GIT_DIRTY}
+    EDGE_BUILD_TYPE="$<CONFIG>"
+)
 
 if(BUILD_TESTING)
     add_executable(
@@ -86,6 +105,7 @@ if(BUILD_TESTING)
         src/CpuBruteForceSearch.cpp
         src/PatchCorePostprocessor.cpp
         src/NpyWriter.cpp
+        src/Preprocessor.cpp
         src/CudaBruteForceSearch.cu
     )
     target_include_directories(
@@ -97,6 +117,7 @@ if(BUILD_TESTING)
     target_link_libraries(edge_runtime_tests PRIVATE ${OpenCV_LIBS} CUDA::cudart)
     if(OpenMP_CXX_FOUND)
         target_link_libraries(edge_runtime_tests PRIVATE OpenMP::OpenMP_CXX)
+        target_compile_definitions(edge_runtime_tests PRIVATE EDGE_HAS_OPENMP=1)
     endif()
     add_test(NAME edge_runtime_tests COMMAND edge_runtime_tests)
 endif()

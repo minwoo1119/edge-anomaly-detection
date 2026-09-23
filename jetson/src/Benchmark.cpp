@@ -18,6 +18,14 @@
 #define EDGE_GIT_COMMIT "unknown"
 #endif
 
+#ifndef EDGE_GIT_DIRTY
+#define EDGE_GIT_DIRTY 1
+#endif
+
+#ifndef EDGE_BUILD_TYPE
+#define EDGE_BUILD_TYPE "unknown"
+#endif
+
 namespace {
 double percentile(std::vector<double> sorted, double fraction) {
     std::sort(sorted.begin(), sorted.end());
@@ -58,6 +66,16 @@ void printStage(const char* name, const std::vector<double>& values) {
               << " max=" << std::setw(10) << stats.maximum
               << " p95=" << stats.p95 << '\n';
 }
+
+std::string csvCell(const std::string& value) {
+    if (value.find_first_of(",\"\r\n") == std::string::npos) return value;
+    std::string escaped = "\"";
+    for (const char character : value) {
+        escaped += character == '\"' ? "\"\"" : std::string(1, character);
+    }
+    escaped += '\"';
+    return escaped;
+}
 }  // namespace
 
 SummaryStatistics summarize(const std::vector<double>& values) {
@@ -90,33 +108,70 @@ void printBenchmarkSummary(const std::vector<StageTimings>& samples) {
     printStage("total", field(samples, &StageTimings::totalMs));
 }
 
+const char* benchmarkBuildType() noexcept {
+    return EDGE_BUILD_TYPE;
+}
+
+const char* benchmarkGitCommit() noexcept {
+    return EDGE_GIT_COMMIT;
+}
+
+bool benchmarkGitDirty() noexcept {
+    return EDGE_GIT_DIRTY != 0;
+}
+
 void writeBenchmarkCsv(
     const std::string& path,
     const RuntimeConfig& config,
+    const BenchmarkMetadata& metadata,
     const std::vector<StageTimings>& samples,
     std::size_t memoryBankBytes,
     std::size_t engineBytes
 ) {
     const std::filesystem::path csvPath(path);
     if (csvPath.has_parent_path()) std::filesystem::create_directories(csvPath.parent_path());
+    const std::string header =
+        "timestamp,git_commit,git_dirty,build_type,device,jetpack,cuda,tensorrt,opencv,"
+        "power_mode,category,model,precision,coreset_ratio,bank_precision,nn_backend,run_id,"
+        "iteration,decision_enabled,threshold,threshold_space,threshold_source,config_path,"
+        "engine_path,memory_bank_path,image_path,config_sha256,engine_sha256,memory_bank_sha256,"
+        "image_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,reshape_ms,nn_ms,post_ms,total_ms,fps,"
+        "bank_memory_mb,engine_size_mb";
     const bool writeHeader = !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
+    if (!writeHeader) {
+        std::ifstream existing(csvPath);
+        std::string existingHeader;
+        std::getline(existing, existingHeader);
+        if (existingHeader != header) {
+            throw std::runtime_error(
+                "Benchmark CSV schema mismatch; use a new output file: " + path
+            );
+        }
+    }
     std::ofstream output(csvPath, std::ios::app);
     if (!output) throw std::runtime_error("Failed to open benchmark CSV: " + path);
-    if (writeHeader) {
-        output << "timestamp,git_commit,device,jetpack,cuda,tensorrt,opencv,power_mode,category,model,precision,coreset_ratio,bank_precision,nn_backend,run_id,iteration,preprocess_ms,h2d_ms,trt_ms,d2h_ms,reshape_ms,nn_ms,post_ms,total_ms,fps,bank_memory_mb,engine_size_mb\n";
-    }
+    if (writeHeader) output << header << '\n';
     const std::string timestamp = timestampUtc();
     const double bankMb = static_cast<double>(memoryBankBytes) / (1024.0 * 1024.0);
     const double engineMb = static_cast<double>(engineBytes) / (1024.0 * 1024.0);
     for (std::size_t index = 0; index < samples.size(); ++index) {
         const StageTimings& sample = samples[index];
         const double fps = sample.totalMs > 0.0 ? 1000.0 / sample.totalMs : 0.0;
-        output << timestamp << ',' << EDGE_GIT_COMMIT << ',' << config.device << ','
-               << config.jetpack << ',' << config.cudaVersion << ',' << config.tensorrtVersion << ','
-               << config.opencvVersion << ',' << config.powerMode << ',' << config.category << ','
-               << config.model << ',' << config.precision << ',' << config.coresetRatio << ','
-               << config.bankPrecision << ',' << config.nnBackend << ',' << config.runId << ','
-               << index << ',' << sample.preprocessMs << ',' << sample.h2dMs << ','
+        output << timestamp << ',' << EDGE_GIT_COMMIT << ',' << (EDGE_GIT_DIRTY ? "true" : "false")
+               << ',' << csvCell(EDGE_BUILD_TYPE) << ',' << csvCell(config.device) << ','
+               << csvCell(config.jetpack) << ',' << csvCell(config.cudaVersion) << ','
+               << csvCell(config.tensorrtVersion) << ',' << csvCell(config.opencvVersion) << ','
+               << csvCell(config.powerMode) << ',' << csvCell(config.category) << ','
+               << csvCell(config.model) << ',' << csvCell(config.precision) << ','
+               << config.coresetRatio << ',' << csvCell(config.bankPrecision) << ','
+               << csvCell(config.nnBackend) << ',' << csvCell(config.runId) << ',' << index << ','
+               << (config.decisionEnabled ? "true" : "false") << ',' << config.threshold << ','
+               << csvCell(config.thresholdSpace) << ',' << csvCell(config.thresholdSource) << ','
+               << csvCell(metadata.configPath) << ',' << csvCell(config.enginePath) << ','
+               << csvCell(config.memoryBankPath) << ',' << csvCell(metadata.imagePath) << ','
+               << metadata.configSha256 << ',' << metadata.engineSha256 << ','
+               << metadata.memoryBankSha256 << ',' << metadata.imageSha256 << ','
+               << sample.preprocessMs << ',' << sample.h2dMs << ','
                << sample.trtMs << ',' << sample.d2hMs << ',' << sample.reshapeMs << ','
                << sample.nnMs << ',' << sample.postprocessMs << ',' << sample.totalMs << ','
                << fps << ',' << bankMb << ',' << engineMb << '\n';

@@ -47,9 +47,16 @@ __global__ void nearestNeighborKernel(
     __syncthreads();
 
     for (int offset = blockDim.x / 2; offset > 0; offset /= 2) {
-        if (threadIdx.x < offset && distances[threadIdx.x + offset] < distances[threadIdx.x]) {
-            distances[threadIdx.x] = distances[threadIdx.x + offset];
-            indices[threadIdx.x] = indices[threadIdx.x + offset];
+        if (threadIdx.x < offset) {
+            const float candidateDistance = distances[threadIdx.x + offset];
+            const unsigned long long candidateIndex = indices[threadIdx.x + offset];
+            const bool candidateIsBetter = candidateDistance < distances[threadIdx.x]
+                || (candidateDistance == distances[threadIdx.x]
+                    && candidateIndex < indices[threadIdx.x]);
+            if (candidateIsBetter) {
+                distances[threadIdx.x] = candidateDistance;
+                indices[threadIdx.x] = candidateIndex;
+            }
         }
         __syncthreads();
     }

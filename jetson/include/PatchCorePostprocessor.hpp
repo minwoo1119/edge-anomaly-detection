@@ -12,6 +12,7 @@
 struct PatchCoreResult {
     float score{0.0F};
     cv::Mat anomalyMap;
+    std::vector<float> patchEmbeddings;
     std::vector<float> patchScores;
     std::vector<std::size_t> nearestIndices;
 };

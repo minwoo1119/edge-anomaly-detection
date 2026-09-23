@@ -18,9 +18,12 @@ struct RuntimeConfig {
     std::string opencvVersion;
     std::string powerMode;
     std::string runId;
+    std::string thresholdSpace;
+    std::string thresholdSource;
     int inputWidth{0};
     int inputHeight{0};
     float threshold{0.0F};
+    bool decisionEnabled{false};
     double coresetRatio{0.0};
     std::size_t numNeighbors{0};
     double gaussianSigma{0.0};
