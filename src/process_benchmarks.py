@@ -57,6 +57,8 @@ IDENTITY_FIELDS = (
 POWER_FIELDS = (
     "avg_power_w",
     "peak_power_w",
+    "measurement_scope",
+    "tegrastats_interval_ms",
     "energy_per_image_mj",
     "fps_per_w",
     "avg_gpu_utilization_pct",

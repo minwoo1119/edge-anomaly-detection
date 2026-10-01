@@ -96,6 +96,8 @@ def main() -> None:
         "nn_backend": metadata["nn_backend"],
         "run_id": metadata["run_id"],
         "samples": len(samples),
+        "measurement_scope": "measured_iterations_only",
+        "tegrastats_interval_ms": 100,
         "avg_power_w": average_power,
         "peak_power_w": max(samples),
         "energy_per_image_mj": average_power * mean_interval_ms,

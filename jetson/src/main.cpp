@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -42,6 +43,8 @@ struct CommandLine {
     std::string patchEmbeddingsPath;
     std::string nearestIndicesPath;
     std::string rawScorePath;
+    std::string benchmarkReadyPath;
+    std::string benchmarkStartPath;
     BenchmarkMetadata benchmarkMetadata;
     std::string runIdOverride;
     bool preprocessOnly{false};
@@ -60,6 +63,7 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
                       << "[--dump-nn-indices <output.npy>] [--dump-score <output.npy>] "
                       << "[--run-id <id>] [--config-sha256 <hash>] [--engine-sha256 <hash>] "
                       << "[--memory-bank-sha256 <hash>] [--image-sha256 <hash>] "
+                      << "[--benchmark-ready <path>] [--benchmark-start <path>] "
                       << "[--preprocess-only]\n";
             std::exit(0);
         }
@@ -70,7 +74,8 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
              || argument == "--dump-score" || argument == "--dump-patches"
              || argument == "--run-id" || argument == "--config-sha256"
              || argument == "--engine-sha256" || argument == "--memory-bank-sha256"
-             || argument == "--image-sha256") && index + 1 >= argc) {
+             || argument == "--image-sha256" || argument == "--benchmark-ready"
+             || argument == "--benchmark-start") && index + 1 >= argc) {
             throw std::invalid_argument("Missing value for argument: " + argument);
         }
         if (argument == "--config") commandLine.configPath = argv[++index];
@@ -89,6 +94,8 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
         else if (argument == "--engine-sha256") commandLine.benchmarkMetadata.engineSha256 = argv[++index];
         else if (argument == "--memory-bank-sha256") commandLine.benchmarkMetadata.memoryBankSha256 = argv[++index];
         else if (argument == "--image-sha256") commandLine.benchmarkMetadata.imageSha256 = argv[++index];
+        else if (argument == "--benchmark-ready") commandLine.benchmarkReadyPath = argv[++index];
+        else if (argument == "--benchmark-start") commandLine.benchmarkStartPath = argv[++index];
         else if (argument == "--preprocess-only") commandLine.preprocessOnly = true;
         else throw std::invalid_argument("Unknown argument: " + argument);
     }
@@ -98,9 +105,39 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
     if (commandLine.preprocessOnly && commandLine.inputTensorPath.empty()) {
         throw std::invalid_argument("--preprocess-only requires --dump-input.");
     }
+    if (commandLine.benchmarkReadyPath.empty() != commandLine.benchmarkStartPath.empty()) {
+        throw std::invalid_argument(
+            "--benchmark-ready and --benchmark-start must be provided together."
+        );
+    }
+    if (!commandLine.benchmarkReadyPath.empty() && commandLine.benchmarkCsvPath.empty()) {
+        throw std::invalid_argument("Benchmark synchronization requires --benchmark-csv.");
+    }
     commandLine.benchmarkMetadata.configPath = commandLine.configPath;
     commandLine.benchmarkMetadata.imagePath = commandLine.imagePath;
     return commandLine;
+}
+
+void synchronizeBenchmarkStart(const CommandLine& commandLine) {
+    if (commandLine.benchmarkReadyPath.empty()) return;
+    const std::filesystem::path ready(commandLine.benchmarkReadyPath);
+    const std::filesystem::path start(commandLine.benchmarkStartPath);
+    if (ready.has_parent_path()) std::filesystem::create_directories(ready.parent_path());
+    if (std::filesystem::exists(ready) || std::filesystem::exists(start)) {
+        throw std::runtime_error("Benchmark synchronization files already exist.");
+    }
+    {
+        std::ofstream signal(ready);
+        if (!signal) throw std::runtime_error("Failed to write benchmark ready signal.");
+        signal << "warmup_complete\n";
+    }
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    while (!std::filesystem::exists(start)) {
+        if (std::chrono::steady_clock::now() >= deadline) {
+            throw std::runtime_error("Timed out waiting for benchmark start signal.");
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 }
 
 void validateBenchmarkInvocation(const CommandLine& commandLine) {
@@ -415,6 +452,7 @@ int main(int argc, char* argv[]) {
                     gpuResidentNn
                 );
             }
+            synchronizeBenchmarkStart(commandLine);
             std::vector<StageTimings> samples;
             samples.reserve(static_cast<std::size_t>(config.repeats));
             if (config.optimizationStageIndex() == 6) {

@@ -105,6 +105,10 @@ throughput입니다. S0-S5에서는 두 값이 같고, S6에서는 서로 다를
 
 Jetson `tegrastats` 기반.
 
+Runner는 C++ warm-up 완료 signal을 기다린 후 `tegrastats`를 시작하고 measured
+iterations만 해제합니다. 따라서 engine load와 warm-up 전력은 평균에서 제외됩니다.
+CSV에는 `measurement_scope=measured_iterations_only`와 tegrastats interval을 기록합니다.
+
 기록:
 - power mode
 - temperature

@@ -14,13 +14,23 @@ POWER_CSV="${4:-${PROJECT_ROOT}/results/csv/power.csv}"
 RUN_ID="${5:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
 MANIFEST="${6:-${PROJECT_ROOT}/results/metadata/${RUN_ID}.json}"
 TEGRALOG="${PROJECT_ROOT}/results/raw/tegrastats/${RUN_ID}.log"
+CONTROL_DIR="${PROJECT_ROOT}/results/raw/control/${RUN_ID}"
+READY_FILE="${CONTROL_DIR}/warmup.ready"
+START_FILE="${CONTROL_DIR}/measurement.start"
 TEGRAPID=""
+BENCHPID=""
 
 cleanup() {
+    if [[ -n "${BENCHPID}" ]] && kill -0 "${BENCHPID}" 2>/dev/null; then
+        kill "${BENCHPID}" 2>/dev/null || true
+        wait "${BENCHPID}" 2>/dev/null || true
+    fi
     if [[ -n "${TEGRAPID}" ]] && kill -0 "${TEGRAPID}" 2>/dev/null; then
         kill "${TEGRAPID}" 2>/dev/null || true
         wait "${TEGRAPID}" 2>/dev/null || true
     fi
+    rm -f -- "${READY_FILE}" "${START_FILE}"
+    rmdir -- "${CONTROL_DIR}" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -52,7 +62,12 @@ if [[ -e "${MANIFEST}" ]]; then
     echo "ERROR: refusing to overwrite experiment manifest: ${MANIFEST}" >&2
     exit 1
 fi
+if [[ -e "${CONTROL_DIR}" ]]; then
+    echo "ERROR: refusing to reuse benchmark control directory: ${CONTROL_DIR}" >&2
+    exit 1
+fi
 mkdir -p "$(dirname "${TEGRALOG}")"
+mkdir -p "${CONTROL_DIR}"
 
 CONFIG="$(realpath "${CONFIG}")"
 IMAGE="$(realpath "${IMAGE}")"
@@ -112,8 +127,6 @@ IMAGE_SHA256="$(sha256sum "${IMAGE}" | awk '{print $1}')"
 ENGINE_SHA256="$(sha256sum "${ENGINE}" | awk '{print $1}')"
 BANK_SHA256="$(sha256sum "${BANK}" | awk '{print $1}')"
 
-tegrastats --interval 100 >"${TEGRALOG}" &
-TEGRAPID=$!
 cd "${PROJECT_ROOT}"
 "${PROJECT_ROOT}/jetson/build/edge_anomaly" \
     --config "${CONFIG}" \
@@ -123,10 +136,40 @@ cd "${PROJECT_ROOT}"
     --config-sha256 "${CONFIG_SHA256}" \
     --engine-sha256 "${ENGINE_SHA256}" \
     --memory-bank-sha256 "${BANK_SHA256}" \
-    --image-sha256 "${IMAGE_SHA256}"
+    --image-sha256 "${IMAGE_SHA256}" \
+    --benchmark-ready "${READY_FILE}" \
+    --benchmark-start "${START_FILE}" &
+BENCHPID=$!
+
+for _ in $(seq 1 1200); do
+    if [[ -f "${READY_FILE}" ]]; then break; fi
+    if ! kill -0 "${BENCHPID}" 2>/dev/null; then
+        wait "${BENCHPID}"
+        echo "ERROR: benchmark exited before completing warm-up." >&2
+        exit 1
+    fi
+    sleep 0.05
+done
+if [[ ! -f "${READY_FILE}" ]]; then
+    echo "ERROR: timed out waiting for benchmark warm-up." >&2
+    exit 1
+fi
+
+tegrastats --interval 100 >"${TEGRALOG}" &
+TEGRAPID=$!
+touch "${START_FILE}"
+set +e
+wait "${BENCHPID}"
+BENCHMARK_STATUS=$?
+set -e
+BENCHPID=""
 kill "${TEGRAPID}" 2>/dev/null || true
 wait "${TEGRAPID}" 2>/dev/null || true
 TEGRAPID=""
+if [[ ${BENCHMARK_STATUS} -ne 0 ]]; then
+    echo "ERROR: benchmark executable failed with status ${BENCHMARK_STATUS}." >&2
+    exit "${BENCHMARK_STATUS}"
+fi
 
 python3 "${PROJECT_ROOT}/jetson/scripts/parse_tegrastats.py" \
     --tegrastats "${TEGRALOG}" \
