@@ -43,6 +43,21 @@ Python reference와 C++ runtime의 correctness report는
 MAE/RMSE/max error/relative L2/cosine similarity와 양쪽 tensor의 min/max/mean/std,
 선택 위치 값이 기록되며 NN index report에는 element agreement rate가 포함됩니다.
 
+FP16/INT8 precision consistency는 여러 이미지 dump를 묶어 분석합니다.
+
+```bash
+python3 src/analyze_precision_consistency.py \
+  --reference-dir outputs/correctness/fp32 \
+  --candidate-dir outputs/correctness/int8 \
+  --candidate-label int8 \
+  --output-csv results/csv/precision_consistency.csv \
+  --manifest results/metadata/int8_consistency.json
+```
+
+embedding MAE/RMSE/relative L2/cosine, Top-1 NN agreement, distance와 score의
+Pearson/Spearman correlation, anomaly-map error를 기록합니다. Top-k dump가 실제로
+존재하는 경우에만 overlap을 계산하며 없는 값을 임의로 채우지 않습니다.
+
 ---
 
 ## 2. Primary Variables

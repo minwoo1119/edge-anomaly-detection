@@ -53,6 +53,15 @@ except ModuleNotFoundError as error:
     if error.name != "numpy":
         raise
     compare_runtime = None
+try:
+    analyze_precision_consistency = load_module(
+        "analyze_precision_consistency",
+        ROOT / "src" / "analyze_precision_consistency.py",
+    )
+except ModuleNotFoundError as error:
+    if error.name != "numpy":
+        raise
+    analyze_precision_consistency = None
 
 
 class TegrastatsTest(unittest.TestCase):
@@ -130,6 +139,19 @@ class RuntimeComparisonTest(unittest.TestCase):
         self.assertEqual(statistics["min"], 1.0)
         self.assertEqual(statistics["max"], 3.0)
         self.assertEqual(statistics["mean"], 2.0)
+
+
+@unittest.skipIf(analyze_precision_consistency is None, "NumPy is not installed")
+class PrecisionConsistencyTest(unittest.TestCase):
+    def test_rankdata_and_topk_overlap(self) -> None:
+        np = analyze_precision_consistency.np
+        ranks = analyze_precision_consistency.rankdata(np.asarray([3.0, 1.0, 1.0]))
+        np.testing.assert_allclose(ranks, np.asarray([3.0, 1.5, 1.5]))
+        overlap = analyze_precision_consistency.topk_overlap(
+            np.asarray([[1, 2, 3], [4, 5, 6]]),
+            np.asarray([[3, 2, 7], [4, 8, 9]]),
+        )
+        self.assertAlmostEqual(overlap, 0.5)
 
 
 class MergeExperimentResultsTest(unittest.TestCase):
