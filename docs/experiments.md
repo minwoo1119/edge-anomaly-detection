@@ -233,3 +233,13 @@ python3 jetson/scripts/evaluate_runtime.py \
 이 평가는 test set으로 threshold를 선택하지 않으며, `config_sha256`,
 `engine_sha256`, `memory_bank_sha256`, dataset fingerprint를 함께 기록합니다.
 생성된 `runtime_accuracy.csv`가 Table 2–5와 Figure 4/5/8의 정확도 입력입니다.
+
+Jetson benchmark summary와 runtime accuracy는 config/artifact hash를 기준으로
+결합합니다. 일치하지 않는 결과나 PyTorch checkpoint accuracy는 거부됩니다.
+
+```bash
+python3 src/merge_experiment_results.py \
+  --benchmark-summary results/processed/precision_run_summary.csv \
+  --runtime-accuracy results/csv/runtime_accuracy.csv \
+  --output results/processed/precision_results.csv
+```

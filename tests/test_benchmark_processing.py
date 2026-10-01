@@ -22,6 +22,9 @@ def load_module(name: str, path: Path):
 process_benchmarks = load_module(
     "process_benchmarks", ROOT / "src" / "process_benchmarks.py"
 )
+merge_experiment_results = load_module(
+    "merge_experiment_results", ROOT / "src" / "merge_experiment_results.py"
+)
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
@@ -98,6 +101,47 @@ class RuntimeEvaluationTest(unittest.TestCase):
                 evaluate_runtime.np.asarray([True, True]),
                 evaluate_runtime.np.asarray([0.1, 0.2]),
             )
+
+
+class MergeExperimentResultsTest(unittest.TestCase):
+    @staticmethod
+    def benchmark() -> dict[str, str]:
+        return {
+            "config_sha256": "config",
+            "engine_sha256": "engine",
+            "memory_bank_sha256": "bank",
+            "category": "bottle",
+            "precision": "fp16",
+            "coreset_ratio": "0.1",
+            "bank_precision": "fp32",
+            "nn_backend": "cpu",
+            "optimization_stage": "S0",
+            "total_mean": "10.0",
+        }
+
+    @staticmethod
+    def accuracy() -> dict[str, str]:
+        return {
+            **MergeExperimentResultsTest.benchmark(),
+            "evaluation_dataset_sha256": "dataset",
+            "image_auroc": "0.99",
+            "pixel_auroc": "0.98",
+            "accuracy_source": "cpp_tensorrt_runtime",
+            "threshold_tuned_on_test": "False",
+        }
+
+    def test_exact_artifact_join(self) -> None:
+        merged = merge_experiment_results.merge_rows(
+            [self.benchmark()], [self.accuracy()]
+        )
+        self.assertEqual(merged[0]["image_auroc"], "0.99")
+        self.assertEqual(merged[0]["accuracy_source"], "cpp_tensorrt_runtime")
+
+    def test_artifact_mismatch_is_rejected(self) -> None:
+        accuracy = self.accuracy()
+        accuracy["engine_sha256"] = "different"
+        with self.assertRaises(RuntimeError):
+            merge_experiment_results.merge_rows([self.benchmark()], [accuracy])
 
 
 if __name__ == "__main__":
