@@ -53,6 +53,7 @@ Notebook의 수동 export 대신 아래 CLI를 사용해 ONNX와 memory bank를 
 ```bash
 python src/export_onnx.py \
   --checkpoint models/patchcore_bottle.ckpt \
+  --training-manifest results/metadata/train_bottle.json \
   --onnx models/patchcore_feature_extractor.onnx \
   --memory-bank models/patchcore_memory_bank.npy \
   --manifest models/patchcore_export_manifest.json \

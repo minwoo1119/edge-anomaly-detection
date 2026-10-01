@@ -86,6 +86,7 @@ def deterministic_input(height: int, width: int, device: torch.device) -> torch.
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--training-manifest", type=Path, required=True)
     parser.add_argument("--onnx", type=Path, required=True)
     parser.add_argument("--memory-bank", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
@@ -108,6 +109,8 @@ def main() -> None:
 
     if not args.checkpoint.is_file():
         parser.error(f"checkpoint does not exist: {args.checkpoint}")
+    if not args.training_manifest.is_file():
+        parser.error(f"training manifest does not exist: {args.training_manifest}")
     if args.validation_image is not None and not args.validation_image.is_file():
         parser.error(f"validation image does not exist: {args.validation_image}")
     if args.device == "cuda" and not torch.cuda.is_available():
@@ -132,6 +135,22 @@ def main() -> None:
             "refusing to overwrite outputs: " + ", ".join(str(path) for path in existing)
         )
 
+    training_manifest = json.loads(args.training_manifest.read_text(encoding="utf-8"))
+    training_checkpoint = training_manifest.get("checkpoint")
+    training_model = training_manifest.get("model")
+    training_dataset = training_manifest.get("dataset")
+    if (
+        not isinstance(training_checkpoint, dict)
+        or not isinstance(training_model, dict)
+        or not isinstance(training_dataset, dict)
+    ):
+        raise RuntimeError("Training manifest is missing checkpoint/model/dataset metadata")
+    if training_checkpoint.get("sha256") != sha256(args.checkpoint):
+        raise RuntimeError("Checkpoint SHA-256 does not match the training manifest")
+    coreset_ratio = training_model.get("coreset_ratio")
+    if not isinstance(coreset_ratio, (int, float)) or not 0.0 < float(coreset_ratio) <= 1.0:
+        raise RuntimeError("Training manifest contains an invalid coreset ratio")
+
     device = torch.device(args.device)
     trained_model = Patchcore.load_from_checkpoint(
         str(args.checkpoint),
@@ -153,6 +172,8 @@ def main() -> None:
     memory_bank = np.ascontiguousarray(memory_bank, dtype=np.float32)
     if not np.isfinite(memory_bank).all():
         raise RuntimeError("Memory bank contains NaN or infinity")
+    if training_model.get("memory_bank_shape") != list(memory_bank.shape):
+        raise RuntimeError("Exported memory-bank shape differs from the training manifest")
 
     if args.validation_image is None:
         validation_input = deterministic_input(args.input_height, args.input_width, device)
@@ -255,6 +276,12 @@ def main() -> None:
             "path": str(args.checkpoint.resolve()),
             "sha256": sha256(args.checkpoint),
         },
+        "training_manifest": {
+            "path": str(args.training_manifest.resolve()),
+            "sha256": sha256(args.training_manifest),
+        },
+        "category": training_dataset.get("category"),
+        "coreset_ratio": float(coreset_ratio),
         "versions": {
             "anomalib": str(anomalib.__version__),
             "torch": str(torch.__version__),

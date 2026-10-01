@@ -60,7 +60,7 @@ def main() -> None:
     parser.add_argument("--export-manifest", type=Path, required=True)
     parser.add_argument("--calibration-dir", type=Path)
     parser.add_argument("--reference-dir", type=Path)
-    parser.add_argument("--training-manifest", type=Path)
+    parser.add_argument("--training-manifest", type=Path, required=True)
     parser.add_argument("--evaluation-manifest", type=Path)
     parser.add_argument("--accuracy-csv", type=Path)
     parser.add_argument("--output", type=Path, required=True)
@@ -77,8 +77,17 @@ def main() -> None:
     export = json.loads(args.export_manifest.read_text(encoding="utf-8"))
     checkpoint = export.get("checkpoint")
     artifacts = export.get("artifacts")
-    if not isinstance(checkpoint, dict) or not isinstance(artifacts, list):
+    training_lineage = export.get("training_manifest")
+    if (
+        not isinstance(checkpoint, dict)
+        or not isinstance(artifacts, list)
+        or not isinstance(training_lineage, dict)
+    ):
         raise RuntimeError("Invalid export manifest structure")
+    if not args.training_manifest.is_file():
+        parser.error(f"training manifest does not exist: {args.training_manifest}")
+    if sha256(args.training_manifest) != training_lineage.get("sha256"):
+        raise RuntimeError("Training manifest does not match export lineage")
 
     entries: list[dict[str, object]] = []
     args.output.parent.mkdir(parents=True, exist_ok=True)

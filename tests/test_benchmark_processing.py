@@ -40,6 +40,10 @@ run_experiment_matrix = load_module(
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
+validate_artifact_chain = load_module(
+    "validate_artifact_chain",
+    ROOT / "jetson" / "scripts" / "validate_artifact_chain.py",
+)
 try:
     evaluate_runtime = load_module(
         "evaluate_runtime", ROOT / "jetson" / "scripts" / "evaluate_runtime.py"
@@ -222,6 +226,29 @@ class CoresetAblationTest(unittest.TestCase):
             [run_coreset_ablation.ratio_tag(value) for value in (0.01, 0.025, 0.05, 0.1, 0.2)],
             ["c001", "c0025", "c005", "c01", "c02"],
         )
+
+
+class ArtifactLineageTest(unittest.TestCase):
+    def test_matching_coreset_and_checkpoint_metadata_is_valid(self) -> None:
+        validate_artifact_chain.validate_coreset_metadata(
+            {
+                "coreset_ratio": 0.1,
+                "checkpoint": {"sha256": "checkpoint-hash"},
+            },
+            {
+                "model": {"coreset_ratio": 0.1},
+                "checkpoint": {"sha256": "checkpoint-hash"},
+            },
+            0.1,
+        )
+
+    def test_mismatched_coreset_ratio_is_rejected(self) -> None:
+        with self.assertRaises(RuntimeError):
+            validate_artifact_chain.validate_coreset_metadata(
+                {"coreset_ratio": 0.2},
+                {},
+                0.1,
+            )
 
 
 class SystemConfigGenerationTest(unittest.TestCase):

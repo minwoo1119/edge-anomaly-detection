@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -45,6 +46,7 @@ def run(command: list[str]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--training-manifest", type=Path, required=True)
     parser.add_argument("--dataset-root", type=Path, required=True)
     parser.add_argument("--category", required=True)
     parser.add_argument("--output-root", type=Path, required=True)
@@ -54,6 +56,17 @@ def main() -> None:
 
     if not args.checkpoint.is_file():
         parser.error(f"checkpoint does not exist: {args.checkpoint}")
+    if not args.training_manifest.is_file():
+        parser.error(f"training manifest does not exist: {args.training_manifest}")
+    training = json.loads(args.training_manifest.read_text(encoding="utf-8"))
+    training_dataset = training.get("dataset")
+    if not isinstance(training_dataset, dict):
+        parser.error("training manifest has no dataset metadata")
+    if training_dataset.get("category") != args.category:
+        parser.error(
+            "training manifest category does not match --category: "
+            f"{training_dataset.get('category')} != {args.category}"
+        )
     if args.calibration_images <= 0:
         parser.error("calibration-images must be positive")
     category_root = args.dataset_root / args.category
@@ -107,6 +120,8 @@ def main() -> None:
             str(source / "export_onnx.py"),
             "--checkpoint",
             str(args.checkpoint),
+            "--training-manifest",
+            str(args.training_manifest),
             "--onnx",
             str(onnx_path),
             "--memory-bank",
@@ -157,6 +172,8 @@ def main() -> None:
             str(source / "package_colab_artifacts.py"),
             "--export-manifest",
             str(export_manifest),
+            "--training-manifest",
+            str(args.training_manifest),
             "--calibration-dir",
             str(calibration),
             "--reference-dir",

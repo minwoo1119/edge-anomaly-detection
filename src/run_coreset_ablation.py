@@ -83,6 +83,8 @@ def main() -> None:
                 str(source / "run_colab_pipeline.py"),
                 "--checkpoint",
                 str(checkpoint),
+                "--training-manifest",
+                str(training_manifest),
                 "--dataset-root",
                 str(args.dataset_root),
                 "--category",

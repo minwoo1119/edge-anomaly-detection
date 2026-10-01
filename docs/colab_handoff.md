@@ -9,6 +9,7 @@ Dataset과 checkpoint가 Colab에만 있는 경우 학습을 반복하지 않고
 ```bash
 python src/run_colab_pipeline.py \
   --checkpoint models/patchcore_bottle.ckpt \
+  --training-manifest results/metadata/train_bottle.json \
   --dataset-root datasets/MVTecAD \
   --category bottle \
   --output-root outputs/colab_bottle_run01
@@ -43,6 +44,7 @@ Image/Pixel AUROC는 논문 정확도 결과에 사용합니다. Test-derived F1
 ```bash
 python src/export_onnx.py \
   --checkpoint models/patchcore_bottle.ckpt \
+  --training-manifest results/metadata/train_bottle.json \
   --onnx models/patchcore_feature_extractor.onnx \
   --memory-bank models/patchcore_memory_bank.npy \
   --manifest models/patchcore_export_manifest.json \
@@ -87,6 +89,7 @@ python src/export_patchcore_reference.py \
 ```bash
 python src/package_colab_artifacts.py \
   --export-manifest models/patchcore_export_manifest.json \
+  --training-manifest results/metadata/train_bottle.json \
   --calibration-dir models/calibration/bottle \
   --reference-dir results/reference \
   --evaluation-manifest results/metadata/evaluate_bottle.json \

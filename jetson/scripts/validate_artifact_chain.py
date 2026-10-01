@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 
@@ -27,6 +28,66 @@ def artifact_hash(manifest: dict[str, object], name: str) -> str:
     return value
 
 
+def validate_coreset_lineage(
+    export_manifest: dict[str, object],
+    export_manifest_path: Path,
+    coreset_ratio: float,
+) -> None:
+    """Validate training, checkpoint, and coreset provenance for an export."""
+    training_manifest = export_manifest.get("training_manifest")
+    if not isinstance(training_manifest, dict):
+        raise RuntimeError("Export manifest has no training-manifest lineage")
+    training_path = Path(str(training_manifest.get("path", "")))
+    if not training_path.is_file():
+        candidates = (
+            export_manifest_path.parent / "training_manifest.json",
+            export_manifest_path.parent.parent / "results" / "training_manifest.json",
+        )
+        training_path = next((path for path in candidates if path.is_file()), training_path)
+    if not training_path.is_file():
+        raise RuntimeError("Training manifest referenced by export is unavailable")
+    if training_manifest.get("sha256") != sha256(training_path):
+        raise RuntimeError("Training manifest SHA-256 does not match export lineage")
+    training = json.loads(training_path.read_text(encoding="utf-8"))
+    validate_coreset_metadata(export_manifest, training, coreset_ratio)
+    export_checkpoint = export_manifest["checkpoint"]
+    packaged_checkpoint = export_manifest_path.parent / "checkpoint.ckpt"
+    if packaged_checkpoint.is_file() and sha256(packaged_checkpoint) != export_checkpoint.get("sha256"):
+        raise RuntimeError("Packaged checkpoint SHA-256 does not match export lineage")
+
+
+def validate_coreset_metadata(
+    export_manifest: dict[str, object],
+    training_manifest: dict[str, object],
+    coreset_ratio: float,
+) -> None:
+    """Validate coreset and checkpoint metadata without filesystem assumptions."""
+    if not math.isclose(
+        float(export_manifest.get("coreset_ratio", -1.0)),
+        coreset_ratio,
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        raise RuntimeError(
+            f"Coreset ratio mismatch: config={coreset_ratio}, "
+            f"export={export_manifest.get('coreset_ratio')}"
+        )
+    training_model = training_manifest.get("model")
+    if not isinstance(training_model, dict) or not math.isclose(
+        float(training_model.get("coreset_ratio", -1.0)),
+        coreset_ratio,
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        raise RuntimeError("Training-manifest coreset ratio does not match the config")
+    export_checkpoint = export_manifest.get("checkpoint")
+    training_checkpoint = training_manifest.get("checkpoint")
+    if not isinstance(export_checkpoint, dict) or not isinstance(training_checkpoint, dict):
+        raise RuntimeError("Checkpoint lineage is missing from training/export manifests")
+    if export_checkpoint.get("sha256") != training_checkpoint.get("sha256"):
+        raise RuntimeError("Training and export checkpoint SHA-256 values differ")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", type=Path, required=True)
@@ -34,6 +95,7 @@ def main() -> None:
     parser.add_argument("--engine-manifest", type=Path, required=True)
     parser.add_argument("--export-manifest", type=Path, required=True)
     parser.add_argument("--precision", choices=("fp32", "fp16", "int8"), required=True)
+    parser.add_argument("--coreset-ratio", type=float, required=True)
     args = parser.parse_args()
 
     for path in (args.engine, args.memory_bank, args.engine_manifest, args.export_manifest):
@@ -41,6 +103,7 @@ def main() -> None:
             parser.error(f"artifact does not exist: {path}")
     engine_manifest = json.loads(args.engine_manifest.read_text(encoding="utf-8"))
     export_manifest = json.loads(args.export_manifest.read_text(encoding="utf-8"))
+    validate_coreset_lineage(export_manifest, args.export_manifest, args.coreset_ratio)
     if engine_manifest.get("precision") != args.precision:
         raise RuntimeError(
             f"Engine precision mismatch: config={args.precision}, "

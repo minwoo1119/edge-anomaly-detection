@@ -13,6 +13,7 @@ import csv
 import hashlib
 import json
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -138,6 +139,8 @@ def main() -> None:
     required_config = (
         "engine_path",
         "memory_bank_path",
+        "engine_manifest_path",
+        "export_manifest_path",
         "precision",
         "coreset_ratio",
         "bank_precision",
@@ -153,9 +156,30 @@ def main() -> None:
         )
     engine = resolve_artifact(repository, config["engine_path"])
     memory_bank = resolve_artifact(repository, config["memory_bank_path"])
-    for path in (engine, memory_bank):
+    engine_manifest = resolve_artifact(repository, config["engine_manifest_path"])
+    export_manifest = resolve_artifact(repository, config["export_manifest_path"])
+    for path in (engine, memory_bank, engine_manifest, export_manifest):
         if not path.is_file():
             parser.error(f"runtime artifact does not exist: {path}")
+    subprocess.run(
+        [
+            sys.executable,
+            str(repository / "jetson" / "scripts" / "validate_artifact_chain.py"),
+            "--engine",
+            str(engine),
+            "--memory-bank",
+            str(memory_bank),
+            "--engine-manifest",
+            str(engine_manifest),
+            "--export-manifest",
+            str(export_manifest),
+            "--precision",
+            config["precision"],
+            "--coreset-ratio",
+            config["coreset_ratio"],
+        ],
+        check=True,
+    )
 
     images = sorted(
         path

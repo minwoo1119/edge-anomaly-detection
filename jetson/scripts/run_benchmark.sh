@@ -73,12 +73,14 @@ if [[ ! -f "${ENGINE}" || ! -f "${BANK}" ]]; then
     exit 1
 fi
 PRECISION="$(awk -F ': *' '$1 == "precision" {print $2; exit}' "${CONFIG}")"
+CORESET_RATIO="$(awk -F ': *' '$1 == "coreset_ratio" {print $2; exit}' "${CONFIG}")"
 python3 "${PROJECT_ROOT}/jetson/scripts/validate_artifact_chain.py" \
     --engine "${ENGINE}" \
     --memory-bank "${BANK}" \
     --engine-manifest "${ENGINE_MANIFEST}" \
     --export-manifest "${EXPORT_MANIFEST}" \
-    --precision "${PRECISION}"
+    --precision "${PRECISION}" \
+    --coreset-ratio "${CORESET_RATIO}"
 
 CONFIG_SHA256="$(sha256sum "${CONFIG}" | awk '{print $1}')"
 IMAGE_SHA256="$(sha256sum "${IMAGE}" | awk '{print $1}')"
