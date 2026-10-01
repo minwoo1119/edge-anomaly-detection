@@ -27,6 +27,12 @@ public:
         const std::vector<float>& input,
         TensorRTTimings* timings = nullptr
     );
+    void inferToDevice(
+        const std::vector<float>& input,
+        TensorRTTimings* timings = nullptr
+    );
+    std::vector<float> copyDeviceOutputToHost() const;
+    const float* deviceOutput() const noexcept;
 
     const std::vector<std::int64_t>& inputShape() const noexcept;
     const std::vector<std::int64_t>& outputShape() const noexcept;

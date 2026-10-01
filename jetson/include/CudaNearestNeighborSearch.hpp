@@ -5,6 +5,11 @@
 
 class CudaBruteForceSearch final : public INearestNeighborSearch {
 public:
+    struct DeviceNchwResult {
+        SearchResult nearest;
+        std::vector<float> maximumDistanceQuery;
+    };
+
     CudaBruteForceSearch(const MemoryBank& memoryBank, std::size_t maximumQueries);
 
     SearchResult search(
@@ -13,6 +18,14 @@ public:
         std::size_t dimensions,
         const MemoryBank& memoryBank
     ) const override;
+
+    DeviceNchwResult searchDeviceNchw(
+        const float* deviceNchw,
+        std::size_t channels,
+        std::size_t height,
+        std::size_t width,
+        const MemoryBank& memoryBank
+    ) const;
 
 private:
     std::size_t rows_{0};
@@ -23,4 +36,6 @@ private:
     mutable CudaBuffer distanceBuffer_;
     mutable CudaBuffer indexBuffer_;
     mutable CudaStream stream_;
+    mutable CudaEvent searchStart_;
+    mutable CudaEvent searchEnd_;
 };

@@ -9,6 +9,7 @@
 struct SearchResult {
     std::vector<float> distances;
     std::vector<std::size_t> indices;
+    double deviceMilliseconds{0.0};
 };
 
 class INearestNeighborSearch {

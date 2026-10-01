@@ -175,25 +175,47 @@ InferenceRun runInference(
     TensorRTInferencer& inferencer,
     const PatchCorePostprocessor& postprocessor,
     const MemoryBank& memoryBank,
-    const INearestNeighborSearch& nearestNeighborSearch
+    const INearestNeighborSearch& nearestNeighborSearch,
+    bool gpuResidentNn
 ) {
     const auto totalStart = std::chrono::steady_clock::now();
     const auto preprocessStart = totalStart;
     std::vector<float> input = preprocessor.preprocess(image);
     const auto preprocessEnd = std::chrono::steady_clock::now();
     TensorRTTimings trtTimings;
-    std::vector<float> embedding = inferencer.infer(input, &trtTimings);
     const auto& outputShape = inferencer.outputShape();
     PostprocessTimings postprocessTimings;
-    PatchCoreResult result = postprocessor.process(
-        embedding,
-        static_cast<std::size_t>(outputShape[1]),
-        static_cast<std::size_t>(outputShape[2]),
-        static_cast<std::size_t>(outputShape[3]),
-        memoryBank,
-        nearestNeighborSearch,
-        &postprocessTimings
-    );
+    std::vector<float> embedding;
+    PatchCoreResult result;
+    if (gpuResidentNn) {
+        const auto* cudaSearch = dynamic_cast<const CudaBruteForceSearch*>(
+            &nearestNeighborSearch
+        );
+        if (cudaSearch == nullptr) {
+            throw std::logic_error("GPU-resident NN requires CudaBruteForceSearch.");
+        }
+        inferencer.inferToDevice(input, &trtTimings);
+        result = postprocessor.processDeviceNchw(
+            inferencer.deviceOutput(),
+            static_cast<std::size_t>(outputShape[1]),
+            static_cast<std::size_t>(outputShape[2]),
+            static_cast<std::size_t>(outputShape[3]),
+            memoryBank,
+            *cudaSearch,
+            &postprocessTimings
+        );
+    } else {
+        embedding = inferencer.infer(input, &trtTimings);
+        result = postprocessor.process(
+            embedding,
+            static_cast<std::size_t>(outputShape[1]),
+            static_cast<std::size_t>(outputShape[2]),
+            static_cast<std::size_t>(outputShape[3]),
+            memoryBank,
+            nearestNeighborSearch,
+            &postprocessTimings
+        );
+    }
     const auto totalEnd = std::chrono::steady_clock::now();
     const auto milliseconds = [](const auto& start, const auto& end) {
         return std::chrono::duration<double, std::milli>(end - start).count();
@@ -257,6 +279,7 @@ int main(int argc, char* argv[]) {
         const PatchCorePostprocessor postprocessor(
             config.inputWidth, config.inputHeight, config.numNeighbors, config.gaussianSigma
         );
+        const bool gpuResidentNn = config.optimizationStageIndex() >= 5;
 
         InferenceRun run;
         if (commandLine.benchmarkCsvPath.empty()) {
@@ -266,7 +289,8 @@ int main(int argc, char* argv[]) {
                 inferencer,
                 postprocessor,
                 memoryBank,
-                *nearestNeighborSearch
+                *nearestNeighborSearch,
+                gpuResidentNn
             );
         } else {
             for (int iteration = 0; iteration < config.warmup; ++iteration) {
@@ -276,7 +300,8 @@ int main(int argc, char* argv[]) {
                     inferencer,
                     postprocessor,
                     memoryBank,
-                    *nearestNeighborSearch
+                    *nearestNeighborSearch,
+                    gpuResidentNn
                 );
             }
             std::vector<StageTimings> samples;
@@ -288,7 +313,8 @@ int main(int argc, char* argv[]) {
                     inferencer,
                     postprocessor,
                     memoryBank,
-                    *nearestNeighborSearch
+                    *nearestNeighborSearch,
+                    gpuResidentNn
                 );
                 samples.push_back(run.timings);
             }
@@ -304,6 +330,19 @@ int main(int argc, char* argv[]) {
             );
         }
 
+        if (gpuResidentNn
+            && (!commandLine.embeddingPath.empty()
+                || !commandLine.patchEmbeddingsPath.empty())) {
+            run.embedding = inferencer.copyDeviceOutputToHost();
+        }
+        if (gpuResidentNn && !commandLine.patchEmbeddingsPath.empty()) {
+            run.result.patchEmbeddings = PatchCorePostprocessor::nchwToPatchMajor(
+                run.embedding,
+                static_cast<std::size_t>(outputShape[1]),
+                static_cast<std::size_t>(outputShape[2]),
+                static_cast<std::size_t>(outputShape[3])
+            );
+        }
         const PatchCoreResult& result = run.result;
 
         if (!commandLine.inputTensorPath.empty()) {

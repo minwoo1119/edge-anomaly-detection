@@ -78,9 +78,9 @@ TensorRTInferencer::TensorRTInferencer(
     const std::string& enginePath,
     int optimizationStage
 ) : optimizationStage_(optimizationStage) {
-    if (optimizationStage_ < 0 || optimizationStage_ > 4) {
+    if (optimizationStage_ < 0 || optimizationStage_ > 5) {
         throw std::invalid_argument(
-            "TensorRT system optimization stages S5 and S6 are not implemented yet."
+            "TensorRT system optimization stage S6 is not implemented yet."
         );
     }
     const std::vector<char> engineBytes = readEngine(enginePath);
@@ -165,6 +165,9 @@ std::vector<float> TensorRTInferencer::infer(
             "Input element count does not match TensorRT engine input."
         );
     }
+    if (optimizationStage_ >= 5) {
+        throw std::logic_error("S5 must use inferToDevice to avoid embedding D2H.");
+    }
 
     CudaBuffer transientInput;
     CudaBuffer transientOutput;
@@ -236,6 +239,69 @@ std::vector<float> TensorRTInferencer::infer(
         std::memcpy(output.data(), pinnedOutputBuffer_.data(), outputBytes);
     }
     return output;
+}
+
+
+void TensorRTInferencer::inferToDevice(
+    const std::vector<float>& input,
+    TensorRTTimings* timings
+) {
+    if (optimizationStage_ != 5) {
+        throw std::logic_error("inferToDevice is only valid for optimization stage S5.");
+    }
+    if (input.size() != inputElements_) {
+        throw std::invalid_argument(
+            "Input element count does not match TensorRT engine input."
+        );
+    }
+    const std::size_t inputBytes = inputElements_ * sizeof(float);
+    std::memcpy(pinnedInputBuffer_.data(), input.data(), inputBytes);
+    const cudaStream_t executionStream = stream_.get();
+    h2dStart_.record(executionStream);
+    checkCuda(
+        cudaMemcpyAsync(
+            inputBuffer_.data(),
+            pinnedInputBuffer_.data(),
+            inputBytes,
+            cudaMemcpyHostToDevice,
+            executionStream
+        ),
+        "Input cudaMemcpyAsync failed"
+    );
+    h2dEnd_.record(executionStream);
+    if (!context_->enqueueV3(executionStream)) {
+        throw std::runtime_error("TensorRT enqueueV3 failed.");
+    }
+    inferenceEnd_.record(executionStream);
+    inferenceEnd_.synchronize();
+    if (timings != nullptr) {
+        timings->h2dMs = CudaEvent::elapsedMilliseconds(h2dStart_, h2dEnd_);
+        timings->inferenceMs = CudaEvent::elapsedMilliseconds(h2dEnd_, inferenceEnd_);
+        timings->d2hMs = 0.0;
+    }
+}
+
+
+std::vector<float> TensorRTInferencer::copyDeviceOutputToHost() const {
+    if (optimizationStage_ < 1) {
+        throw std::logic_error("No persistent device output is available at S0.");
+    }
+    std::vector<float> output(outputElements_);
+    checkCuda(
+        cudaMemcpy(
+            output.data(),
+            outputBuffer_.data(),
+            outputElements_ * sizeof(float),
+            cudaMemcpyDeviceToHost
+        ),
+        "Debug output cudaMemcpy failed"
+    );
+    return output;
+}
+
+
+const float* TensorRTInferencer::deviceOutput() const noexcept {
+    return static_cast<const float*>(outputBuffer_.data());
 }
 
 

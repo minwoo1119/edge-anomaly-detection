@@ -10,14 +10,16 @@ S1: persistent device input/output buffer
 S2: S1 + persistent pinned host staging buffer
 S3: S2 + asynchronous H2D/D2H on the default stream
 S4: S3 + dedicated non-blocking CUDA stream
-S5: GPU-resident NN (아직 선택 불가)
+S5: GPU-resident NN (TensorRT NCHW output을 CUDA NN이 직접 접근)
 S6: pipeline overlap (아직 선택 불가)
 ```
 
-S5/S6가 실제로 구현되기 전에는 runtime이 해당 stage를 거부합니다. 따라서
-metadata만 S5/S6로 바꿔 성능 결과를 생성할 수 없습니다.
+S5는 전체 embedding D2H와 query H2D를 제거하고 patch distance/index 및 image
+score reweighting에 필요한 최대-distance patch만 host로 복사합니다. S6가 실제로
+구현되기 전에는 runtime이 해당 stage를 거부하므로 metadata만 S6로 바꿔 성능
+결과를 생성할 수 없습니다.
 
-환경 정보와 artifact path를 채운 baseline config에서 S0-S4 config를 생성합니다.
+환경 정보와 artifact path를 채운 baseline config에서 S0-S5 config를 생성합니다.
 
 ```bash
 python3 src/generate_system_configs.py \

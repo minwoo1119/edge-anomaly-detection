@@ -93,6 +93,36 @@ void testCpuCudaTieBreaking() {
     require(cudaResult.indices[0] == 0, "CUDA tie-breaking must select the lowest bank index");
 }
 
+void testDeviceNchwNearestNeighbor() {
+    const MemoryBank bank({0.0F, 0.0F, 2.0F, 4.0F, -1.0F, 1.0F}, 3, 2);
+    const std::vector<float> patchMajor{0.0F, 0.0F, 3.0F, 4.0F, -2.0F, 1.0F};
+    const std::vector<float> nchw{0.0F, 3.0F, -2.0F, 0.0F, 4.0F, 1.0F};
+    CudaBuffer device(nchw.size() * sizeof(float));
+    checkCuda(
+        cudaMemcpy(
+            device.data(), nchw.data(), nchw.size() * sizeof(float), cudaMemcpyHostToDevice
+        ),
+        "Test embedding H2D failed"
+    );
+    const CpuBruteForceSearch cpu;
+    const SearchResult cpuResult = cpu.search(patchMajor.data(), 3, 2, bank);
+    const CudaBruteForceSearch cuda(bank, 3);
+    const auto deviceResult = cuda.searchDeviceNchw(
+        static_cast<const float*>(device.data()), 2, 1, 3, bank
+    );
+    require(cpuResult.indices == deviceResult.nearest.indices, "Device NCHW indices differ");
+    for (std::size_t index = 0; index < cpuResult.distances.size(); ++index) {
+        require(
+            std::abs(cpuResult.distances[index] - deviceResult.nearest.distances[index]) < 1e-5F,
+            "Device NCHW distances differ"
+        );
+    }
+    require(
+        deviceResult.maximumDistanceQuery == std::vector<float>({3.0F, 4.0F}),
+        "Device NCHW maximum-distance query gather failed"
+    );
+}
+
 void testMemoryBankRejectsNonFiniteValues() {
     bool rejected = false;
     try {
@@ -141,6 +171,7 @@ int main() {
         testPatchLayoutAndNearestNeighbor();
         testCpuCudaAgreement();
         testCpuCudaTieBreaking();
+        testDeviceNchwNearestNeighbor();
         testMemoryBankRejectsNonFiniteValues();
         testPostprocessing();
         testOptimizationStageIndex();

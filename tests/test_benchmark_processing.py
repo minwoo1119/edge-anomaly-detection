@@ -232,7 +232,13 @@ class SystemConfigGenerationTest(unittest.TestCase):
 
     def test_unimplemented_stage_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            generate_system_configs.with_stage("optimization_stage: S0\n", "S5")
+            generate_system_configs.with_stage("optimization_stage: S0\n", "S6")
+
+    def test_s5_selects_cuda_backend(self) -> None:
+        baseline = "optimization_stage: S0\nnn_backend: cpu\n"
+        generated = generate_system_configs.with_stage(baseline, "S5")
+        self.assertIn("optimization_stage: S5", generated)
+        self.assertIn("nn_backend: cuda", generated)
 
 
 class ExperimentMatrixTest(unittest.TestCase):

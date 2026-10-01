@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MemoryBank.hpp"
+#include "CudaNearestNeighborSearch.hpp"
 #include "NearestNeighborSearch.hpp"
 
 #include <opencv2/core.hpp>
@@ -43,6 +44,16 @@ public:
         PostprocessTimings* timings = nullptr
     ) const;
 
+    PatchCoreResult processDeviceNchw(
+        const float* deviceNchwEmbedding,
+        std::size_t channels,
+        std::size_t featureHeight,
+        std::size_t featureWidth,
+        const MemoryBank& memoryBank,
+        const CudaBruteForceSearch& search,
+        PostprocessTimings* timings = nullptr
+    ) const;
+
     static std::vector<float> nchwToPatchMajor(
         const std::vector<float>& nchwEmbedding,
         std::size_t channels,
@@ -52,9 +63,19 @@ public:
 
 private:
     float weightedImageScore(
-        const std::vector<float>& queries,
+        const float* anomalousPatch,
         std::size_t dimensions,
         const SearchResult& nearest,
+        const MemoryBank& memoryBank
+    ) const;
+
+    PatchCoreResult buildResult(
+        SearchResult nearest,
+        std::vector<float> patchEmbeddings,
+        const float* anomalousPatch,
+        std::size_t dimensions,
+        std::size_t featureHeight,
+        std::size_t featureWidth,
         const MemoryBank& memoryBank
     ) const;
 

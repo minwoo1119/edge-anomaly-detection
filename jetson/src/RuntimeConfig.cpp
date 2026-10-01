@@ -141,6 +141,13 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
         || config.optimizationStage[1] > '6') {
         throw std::runtime_error("optimization_stage must be one of S0 through S6.");
     }
+    const int optimizationStage = config.optimizationStage[1] - '0';
+    if (optimizationStage >= 5 && config.nnBackend != "cuda") {
+        throw std::runtime_error("S5 and S6 require nn_backend=cuda.");
+    }
+    if (optimizationStage == 6) {
+        throw std::runtime_error("S6 pipeline overlap is not implemented yet.");
+    }
     config.numNeighbors = static_cast<std::size_t>(numNeighbors);
     return config;
 }

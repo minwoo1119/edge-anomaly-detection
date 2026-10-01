@@ -61,7 +61,7 @@ std::vector<float> PatchCorePostprocessor::nchwToPatchMajor(
 
 
 float PatchCorePostprocessor::weightedImageScore(
-    const std::vector<float>& queries,
+    const float* anomalousPatch,
     std::size_t dimensions,
     const SearchResult& nearest,
     const MemoryBank& memoryBank
@@ -107,7 +107,6 @@ float PatchCorePostprocessor::weightedImageScore(
         }
     );
 
-    const float* anomalousPatch = queries.data() + patchIndex * dimensions;
     std::vector<float> supportDistances(neighbors);
     for (std::size_t neighbor = 0; neighbor < neighbors; ++neighbor) {
         const float* support = memoryBank.row(anchorDistances[neighbor].second);
@@ -133,34 +132,18 @@ float PatchCorePostprocessor::weightedImageScore(
 }
 
 
-PatchCoreResult PatchCorePostprocessor::process(
-    const std::vector<float>& nchwEmbedding,
-    std::size_t channels,
+PatchCoreResult PatchCorePostprocessor::buildResult(
+    SearchResult nearest,
+    std::vector<float> patchEmbeddings,
+    const float* anomalousPatch,
+    std::size_t dimensions,
     std::size_t featureHeight,
     std::size_t featureWidth,
-    const MemoryBank& memoryBank,
-    const INearestNeighborSearch& search,
-    PostprocessTimings* timings
+    const MemoryBank& memoryBank
 ) const {
-    const auto reshapeStart = std::chrono::steady_clock::now();
-    std::vector<float> queries = nchwToPatchMajor(
-        nchwEmbedding,
-        channels,
-        featureHeight,
-        featureWidth
-    );
-    const auto nearestNeighborStart = std::chrono::steady_clock::now();
-    SearchResult nearest = search.search(
-        queries.data(),
-        featureHeight * featureWidth,
-        channels,
-        memoryBank
-    );
-    const auto postprocessStart = std::chrono::steady_clock::now();
-
     const float score = weightedImageScore(
-        queries,
-        channels,
+        anomalousPatch,
+        dimensions,
         nearest,
         memoryBank
     );
@@ -195,16 +178,109 @@ PatchCoreResult PatchCorePostprocessor::process(
     PatchCoreResult result;
     result.score = score;
     result.anomalyMap = std::move(anomalyMap);
-    result.patchEmbeddings = std::move(queries);
+    result.patchEmbeddings = std::move(patchEmbeddings);
     result.patchScores = std::move(nearest.distances);
     result.nearestIndices = std::move(nearest.indices);
+    return result;
+}
+
+
+PatchCoreResult PatchCorePostprocessor::process(
+    const std::vector<float>& nchwEmbedding,
+    std::size_t channels,
+    std::size_t featureHeight,
+    std::size_t featureWidth,
+    const MemoryBank& memoryBank,
+    const INearestNeighborSearch& search,
+    PostprocessTimings* timings
+) const {
+    const auto reshapeStart = std::chrono::steady_clock::now();
+    std::vector<float> queries = nchwToPatchMajor(
+        nchwEmbedding,
+        channels,
+        featureHeight,
+        featureWidth
+    );
+    const auto nearestNeighborStart = std::chrono::steady_clock::now();
+    SearchResult nearest = search.search(
+        queries.data(),
+        featureHeight * featureWidth,
+        channels,
+        memoryBank
+    );
+    const auto postprocessStart = std::chrono::steady_clock::now();
+    const auto maximum = std::max_element(nearest.distances.begin(), nearest.distances.end());
+    const std::size_t maximumPatch = static_cast<std::size_t>(
+        std::distance(nearest.distances.begin(), maximum)
+    );
+    const auto maximumBegin = queries.begin()
+        + static_cast<std::ptrdiff_t>(maximumPatch * channels);
+    const std::vector<float> maximumQuery(
+        maximumBegin,
+        maximumBegin + static_cast<std::ptrdiff_t>(channels)
+    );
+    const double deviceMilliseconds = nearest.deviceMilliseconds;
+    PatchCoreResult result = buildResult(
+        std::move(nearest),
+        std::move(queries),
+        maximumQuery.data(),
+        channels,
+        featureHeight,
+        featureWidth,
+        memoryBank
+    );
     if (timings != nullptr) {
         const auto end = std::chrono::steady_clock::now();
         const auto milliseconds = [](const auto& start, const auto& finish) {
             return std::chrono::duration<double, std::milli>(finish - start).count();
         };
         timings->reshapeMs = milliseconds(reshapeStart, nearestNeighborStart);
-        timings->nearestNeighborMs = milliseconds(nearestNeighborStart, postprocessStart);
+        timings->nearestNeighborMs = deviceMilliseconds > 0.0
+            ? deviceMilliseconds
+            : milliseconds(nearestNeighborStart, postprocessStart);
+        timings->postprocessMs = milliseconds(postprocessStart, end);
+    }
+    return result;
+}
+
+
+PatchCoreResult PatchCorePostprocessor::processDeviceNchw(
+    const float* deviceNchwEmbedding,
+    std::size_t channels,
+    std::size_t featureHeight,
+    std::size_t featureWidth,
+    const MemoryBank& memoryBank,
+    const CudaBruteForceSearch& search,
+    PostprocessTimings* timings
+) const {
+    const auto nearestNeighborStart = std::chrono::steady_clock::now();
+    CudaBruteForceSearch::DeviceNchwResult deviceResult = search.searchDeviceNchw(
+        deviceNchwEmbedding,
+        channels,
+        featureHeight,
+        featureWidth,
+        memoryBank
+    );
+    const auto postprocessStart = std::chrono::steady_clock::now();
+    const double deviceMilliseconds = deviceResult.nearest.deviceMilliseconds;
+    PatchCoreResult result = buildResult(
+        std::move(deviceResult.nearest),
+        {},
+        deviceResult.maximumDistanceQuery.data(),
+        channels,
+        featureHeight,
+        featureWidth,
+        memoryBank
+    );
+    if (timings != nullptr) {
+        const auto end = std::chrono::steady_clock::now();
+        const auto milliseconds = [](const auto& start, const auto& finish) {
+            return std::chrono::duration<double, std::milli>(finish - start).count();
+        };
+        timings->reshapeMs = 0.0;
+        timings->nearestNeighborMs = deviceMilliseconds > 0.0
+            ? deviceMilliseconds
+            : milliseconds(nearestNeighborStart, postprocessStart);
         timings->postprocessMs = milliseconds(postprocessStart, end);
     }
     return result;
