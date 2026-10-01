@@ -243,3 +243,22 @@ python3 src/merge_experiment_results.py \
   --runtime-accuracy results/csv/runtime_accuracy.csv \
   --output results/processed/precision_results.csv
 ```
+
+모든 ablation 결과가 준비되면 다음 명령이 공정성 조건, 200회 measurement,
+configuration별 3회 independent run, runtime accuracy 출처를 검증하고 논문용
+CSV/Markdown table과 data-driven SVG figure를 재생성합니다.
+
+```bash
+python3 scripts/generate_paper_results.py \
+  --baseline results/processed/baseline_results.csv \
+  --precision results/processed/precision_results.csv \
+  --coreset results/processed/coreset_results.csv \
+  --nn-backend results/processed/nn_backend_results.csv \
+  --system results/processed/system_results.csv \
+  --multi-category results/processed/multi_category_results.csv \
+  --output-root results
+```
+
+개발 중 일부 조합만 점검할 때만 `--allow-incomplete`를 사용합니다. 최종 논문
+산출물에서는 이 옵션을 사용하지 않습니다. 입력 CSV hash와 누락 조합은
+`results/result_coverage.json`에 기록됩니다.

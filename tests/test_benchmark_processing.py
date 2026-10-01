@@ -25,6 +25,9 @@ process_benchmarks = load_module(
 merge_experiment_results = load_module(
     "merge_experiment_results", ROOT / "src" / "merge_experiment_results.py"
 )
+generate_paper_results = load_module(
+    "generate_paper_results", ROOT / "scripts" / "generate_paper_results.py"
+)
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
@@ -142,6 +145,24 @@ class MergeExperimentResultsTest(unittest.TestCase):
         accuracy["engine_sha256"] = "different"
         with self.assertRaises(RuntimeError):
             merge_experiment_results.merge_rows([self.benchmark()], [accuracy])
+
+
+class PaperResultGenerationTest(unittest.TestCase):
+    def test_pareto_frontier(self) -> None:
+        points = [
+            ("slow-accurate", 10.0, 0.99),
+            ("fast-accurate", 5.0, 0.99),
+            ("fast-less-accurate", 5.0, 0.95),
+            ("fastest", 3.0, 0.90),
+        ]
+        self.assertEqual(
+            generate_paper_results.pareto(points), {"fast-accurate", "fastest"}
+        )
+
+    def test_fixed_condition_violation_is_rejected(self) -> None:
+        rows = [{"power_mode": "15W"}, {"power_mode": "MAXN"}]
+        with self.assertRaises(RuntimeError):
+            generate_paper_results.ensure_fixed(rows, ("power_mode",), "precision")
 
 
 if __name__ == "__main__":
