@@ -146,6 +146,9 @@ def main() -> None:
         "bank_precision",
         "nn_backend",
         "optimization_stage",
+        "decision_enabled",
+        "threshold",
+        "threshold_source",
     )
     missing = [key for key in required_config if key not in config]
     if missing:
@@ -161,23 +164,40 @@ def main() -> None:
     for path in (engine, memory_bank, engine_manifest, export_manifest):
         if not path.is_file():
             parser.error(f"runtime artifact does not exist: {path}")
+    validation_command = [
+        sys.executable,
+        str(repository / "jetson" / "scripts" / "validate_artifact_chain.py"),
+        "--engine",
+        str(engine),
+        "--memory-bank",
+        str(memory_bank),
+        "--engine-manifest",
+        str(engine_manifest),
+        "--export-manifest",
+        str(export_manifest),
+        "--precision",
+        config["precision"],
+        "--coreset-ratio",
+        config["coreset_ratio"],
+        "--category",
+        args.category,
+        "--decision-enabled",
+        config["decision_enabled"],
+        "--threshold",
+        config["threshold"],
+        "--threshold-source",
+        config["threshold_source"],
+    ]
+    threshold_manifest: Path | None = None
+    if config["decision_enabled"] == "true":
+        if "threshold_manifest_path" not in config:
+            parser.error("decision-enabled config has no threshold_manifest_path")
+        threshold_manifest = resolve_artifact(repository, config["threshold_manifest_path"])
+        if not threshold_manifest.is_file():
+            parser.error(f"threshold manifest does not exist: {threshold_manifest}")
+        validation_command.extend(["--threshold-manifest", str(threshold_manifest)])
     subprocess.run(
-        [
-            sys.executable,
-            str(repository / "jetson" / "scripts" / "validate_artifact_chain.py"),
-            "--engine",
-            str(engine),
-            "--memory-bank",
-            str(memory_bank),
-            "--engine-manifest",
-            str(engine_manifest),
-            "--export-manifest",
-            str(export_manifest),
-            "--precision",
-            config["precision"],
-            "--coreset-ratio",
-            config["coreset_ratio"],
-        ],
+        validation_command,
         check=True,
     )
 
@@ -303,6 +323,11 @@ def main() -> None:
             "work_dir": str(args.work_dir.resolve()),
         },
     }
+    if threshold_manifest is not None:
+        manifest["artifacts"]["threshold_manifest"] = {
+            "path": str(threshold_manifest.resolve()),
+            "sha256": sha256(threshold_manifest),
+        }
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(f"image_auroc={image_auroc:.9g}")

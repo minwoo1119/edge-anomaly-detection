@@ -74,13 +74,38 @@ if [[ ! -f "${ENGINE}" || ! -f "${BANK}" ]]; then
 fi
 PRECISION="$(awk -F ': *' '$1 == "precision" {print $2; exit}' "${CONFIG}")"
 CORESET_RATIO="$(awk -F ': *' '$1 == "coreset_ratio" {print $2; exit}' "${CONFIG}")"
+DECISION_ENABLED="$(awk -F ': *' '$1 == "decision_enabled" {print $2; exit}' "${CONFIG}")"
+THRESHOLD="$(awk -F ': *' '$1 == "threshold" {print $2; exit}' "${CONFIG}")"
+THRESHOLD_SOURCE="$(awk -F ': *' '$1 == "threshold_source" {print $2; exit}' "${CONFIG}")"
+CATEGORY="$(awk -F ': *' '$1 == "category" {print $2; exit}' "${CONFIG}")"
+THRESHOLD_MANIFEST_REL="$(awk -F ': *' '$1 == "threshold_manifest_path" {print $2; exit}' "${CONFIG}")"
+THRESHOLD_ARGS=()
+MANIFEST_THRESHOLD_ARGS=()
+if [[ "${DECISION_ENABLED}" == "true" ]]; then
+    if [[ -z "${THRESHOLD_MANIFEST_REL}" ]]; then
+        echo "ERROR: decision-enabled config must define threshold_manifest_path." >&2
+        exit 1
+    fi
+    if [[ "${THRESHOLD_MANIFEST_REL}" = /* ]]; then
+        THRESHOLD_MANIFEST="${THRESHOLD_MANIFEST_REL}"
+    else
+        THRESHOLD_MANIFEST="${PROJECT_ROOT}/${THRESHOLD_MANIFEST_REL}"
+    fi
+    THRESHOLD_ARGS=(--threshold-manifest "${THRESHOLD_MANIFEST}")
+    MANIFEST_THRESHOLD_ARGS=(--threshold-manifest "${THRESHOLD_MANIFEST}")
+fi
 python3 "${PROJECT_ROOT}/jetson/scripts/validate_artifact_chain.py" \
     --engine "${ENGINE}" \
     --memory-bank "${BANK}" \
     --engine-manifest "${ENGINE_MANIFEST}" \
     --export-manifest "${EXPORT_MANIFEST}" \
     --precision "${PRECISION}" \
-    --coreset-ratio "${CORESET_RATIO}"
+    --coreset-ratio "${CORESET_RATIO}" \
+    --category "${CATEGORY}" \
+    --decision-enabled "${DECISION_ENABLED}" \
+    --threshold "${THRESHOLD}" \
+    --threshold-source "${THRESHOLD_SOURCE}" \
+    "${THRESHOLD_ARGS[@]}"
 
 CONFIG_SHA256="$(sha256sum "${CONFIG}" | awk '{print $1}')"
 IMAGE_SHA256="$(sha256sum "${IMAGE}" | awk '{print $1}')"
@@ -121,4 +146,5 @@ python3 "${PROJECT_ROOT}/jetson/scripts/write_experiment_manifest.py" \
     --power-csv "${POWER_CSV}" \
     --tegrastats "${TEGRALOG}" \
     --run-id "${RUN_ID}" \
+    "${MANIFEST_THRESHOLD_ARGS[@]}" \
     --output "${MANIFEST}"

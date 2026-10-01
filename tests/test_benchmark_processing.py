@@ -44,6 +44,9 @@ validate_artifact_chain = load_module(
     "validate_artifact_chain",
     ROOT / "jetson" / "scripts" / "validate_artifact_chain.py",
 )
+apply_threshold_config = load_module(
+    "apply_threshold_config", ROOT / "src" / "apply_threshold_config.py"
+)
 try:
     evaluate_runtime = load_module(
         "evaluate_runtime", ROOT / "jetson" / "scripts" / "evaluate_runtime.py"
@@ -269,6 +272,40 @@ class ArtifactLineageTest(unittest.TestCase):
                 {},
                 0.1,
             )
+
+    def test_train_normal_threshold_metadata_is_valid(self) -> None:
+        validate_artifact_chain.validate_threshold_metadata(
+            {
+                "test_set_used_for_threshold_tuning": False,
+                "source": "train_normal",
+                "threshold_space": "raw",
+                "category": "bottle",
+                "threshold": 1.25,
+                "checkpoint": {"sha256": "checkpoint-hash"},
+            },
+            {"checkpoint": {"sha256": "checkpoint-hash"}},
+            "bottle",
+            1.25,
+            "train_normal",
+        )
+
+
+class ApplyThresholdConfigTest(unittest.TestCase):
+    def test_enables_decision_and_records_manifest(self) -> None:
+        baseline = (
+            "category: bottle\n"
+            "decision_enabled: false\n"
+            "threshold: 0.0\n"
+            "threshold_space: raw\n"
+            "threshold_source: unset\n"
+        )
+        updated = apply_threshold_config.apply_threshold(
+            baseline, 1.25, Path("results/threshold_manifest.json")
+        )
+        self.assertIn("decision_enabled: true", updated)
+        self.assertIn("threshold: 1.25", updated)
+        self.assertIn("threshold_source: train_normal", updated)
+        self.assertIn("threshold_manifest_path:", updated)
 
 
 class SystemConfigGenerationTest(unittest.TestCase):

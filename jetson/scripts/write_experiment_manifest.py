@@ -73,6 +73,7 @@ def main() -> None:
         "output",
     ):
         parser.add_argument(f"--{name.replace('_', '-')}", type=Path, required=True)
+    parser.add_argument("--threshold-manifest", type=Path)
     parser.add_argument("--run-id", required=True)
     args = parser.parse_args()
 
@@ -126,6 +127,9 @@ def main() -> None:
             ),
         },
     }
+    if args.threshold_manifest is not None:
+        manifest["lineage"]["threshold_manifest_sha256"] = sha256(args.threshold_manifest)
+        manifest["artifacts"]["threshold_manifest"] = artifact(args.threshold_manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.output.exists():
         raise FileExistsError(f"Refusing to overwrite experiment manifest: {args.output}")

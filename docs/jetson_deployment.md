@@ -83,6 +83,20 @@ python src/convert_memory_bank.py \
 
 생성된 `.npy.json`에는 source/output hash와 FP32 복원 오차가 기록됩니다. Benchmark runner는 이 provenance가 없거나 hash가 다르면 FP16 bank 실험을 거부합니다.
 
+Train-normal에서 생성한 threshold를 수동 복사하지 않고 runtime config에 적용합니다.
+
+```bash
+python src/apply_threshold_config.py \
+  --config configs/jetson_fp16.yaml \
+  --threshold-manifest results/threshold_manifest.json \
+  --export-manifest models/patchcore_export_manifest.json \
+  --output configs/generated/jetson_fp16_decision.yaml
+```
+
+생성 config는 `decision_enabled=true`, raw score threshold, `threshold_source=train_normal`,
+threshold manifest 경로를 함께 기록합니다. Benchmark와 runtime evaluation은 실행 전에
+threshold 값, category, checkpoint hash 및 test-set 미사용 표식을 검증합니다.
+
 ---
 
 ## Environment Check
