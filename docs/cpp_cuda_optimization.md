@@ -1,5 +1,32 @@
 # C++ / CUDA Optimization
 
+## System ablation stage contract
+
+System optimization은 `optimization_stage`와 실제 실행 경로가 일치해야 합니다.
+
+```text
+S0: frame마다 device input/output buffer 할당 + pageable host memory + synchronous copy
+S1: persistent device input/output buffer
+S2: S1 + persistent pinned host staging buffer
+S3: S2 + asynchronous H2D/D2H on the default stream
+S4: S3 + dedicated non-blocking CUDA stream
+S5: GPU-resident NN (아직 선택 불가)
+S6: pipeline overlap (아직 선택 불가)
+```
+
+S5/S6가 실제로 구현되기 전에는 runtime이 해당 stage를 거부합니다. 따라서
+metadata만 S5/S6로 바꿔 성능 결과를 생성할 수 없습니다.
+
+환경 정보와 artifact path를 채운 baseline config에서 S0-S4 config를 생성합니다.
+
+```bash
+python3 src/generate_system_configs.py \
+  --baseline configs/orin_bottle_fp32_cpu.yaml \
+  --output-dir results/configs/bottle_system
+```
+
+생성 manifest에는 baseline과 각 config의 SHA-256가 기록됩니다.
+
 ## 1. 목표
 
 C++을 단순 TensorRT 호출 glue code가 아니라 시스템 최적화의 핵심으로 사용합니다.

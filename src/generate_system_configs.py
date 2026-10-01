@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Generate traceable S0-S4 configs from one environment-specific baseline config."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+
+IMPLEMENTED_STAGES = ("S0", "S1", "S2", "S3", "S4")
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def with_stage(config_text: str, stage: str) -> str:
+    if stage not in IMPLEMENTED_STAGES:
+        raise ValueError(f"System stage is not implemented: {stage}")
+    lines = config_text.splitlines()
+    matches = [index for index, line in enumerate(lines) if line.strip().startswith("optimization_stage:")]
+    if len(matches) != 1:
+        raise ValueError("Baseline config must contain exactly one optimization_stage key")
+    prefix = lines[matches[0]][: len(lines[matches[0]]) - len(lines[matches[0]].lstrip())]
+    lines[matches[0]] = f"{prefix}optimization_stage: {stage}"
+    return "\n".join(lines) + "\n"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--baseline", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--stages", nargs="+", default=IMPLEMENTED_STAGES)
+    args = parser.parse_args()
+
+    if not args.baseline.is_file():
+        parser.error(f"baseline config does not exist: {args.baseline}")
+    if args.output_dir.exists() and any(args.output_dir.iterdir()):
+        parser.error(f"output-dir must be empty or absent: {args.output_dir}")
+    if len(set(args.stages)) != len(args.stages):
+        parser.error("stages must be unique")
+    unsupported = [stage for stage in args.stages if stage not in IMPLEMENTED_STAGES]
+    if unsupported:
+        parser.error("stages are not implemented: " + ", ".join(unsupported))
+
+    baseline_text = args.baseline.read_text(encoding="utf-8")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    outputs: list[dict[str, str]] = []
+    for stage in args.stages:
+        path = args.output_dir / f"{args.baseline.stem}_{stage.lower()}.yaml"
+        path.write_text(with_stage(baseline_text, stage), encoding="utf-8")
+        outputs.append({"stage": stage, "path": str(path.resolve()), "sha256": sha256(path)})
+    manifest = {
+        "schema_version": 1,
+        "baseline": {
+            "path": str(args.baseline.resolve()),
+            "sha256": sha256(args.baseline),
+        },
+        "implemented_stages": list(IMPLEMENTED_STAGES),
+        "outputs": outputs,
+    }
+    manifest_path = args.output_dir / "system_configs_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print(f"configs={len(outputs)}")
+    print(f"manifest={manifest_path}")
+
+
+if __name__ == "__main__":
+    main()

@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
         }
 
         const MemoryBank memoryBank = MemoryBank::loadNpy(config.memoryBankPath);
-        TensorRTInferencer inferencer(config.enginePath);
+        TensorRTInferencer inferencer(config.enginePath, config.optimizationStageIndex());
         validateTensorShapes(inferencer, config, memoryBank);
         const auto& outputShape = inferencer.outputShape();
         std::unique_ptr<INearestNeighborSearch> nearestNeighborSearch;

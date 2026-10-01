@@ -4,6 +4,7 @@
 #include "NpyWriter.hpp"
 #include "PatchCorePostprocessor.hpp"
 #include "Preprocessor.hpp"
+#include "RuntimeConfig.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -123,6 +124,14 @@ void testPostprocessing() {
         require(std::abs(result.anomalyMap.at<float>(row, 3) - 1.0F) < 1e-6F, "Nearest map resize is incorrect");
     }
 }
+
+void testOptimizationStageIndex() {
+    RuntimeConfig config;
+    for (int stage = 0; stage <= 6; ++stage) {
+        config.optimizationStage = "S" + std::to_string(stage);
+        require(config.optimizationStageIndex() == stage, "Optimization stage parsing failed");
+    }
+}
 }  // namespace
 
 int main() {
@@ -134,6 +143,7 @@ int main() {
         testCpuCudaTieBreaking();
         testMemoryBankRejectsNonFiniteValues();
         testPostprocessing();
+        testOptimizationStageIndex();
         std::cout << "All runtime tests passed.\n";
         return 0;
     } catch (const std::exception& error) {

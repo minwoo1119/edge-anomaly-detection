@@ -32,4 +32,5 @@ struct RuntimeConfig {
     int repeats{0};
 
     static RuntimeConfig load(const std::string& path);
+    int optimizationStageIndex() const noexcept;
 };

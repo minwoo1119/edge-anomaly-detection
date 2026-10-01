@@ -144,3 +144,7 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     config.numNeighbors = static_cast<std::size_t>(numNeighbors);
     return config;
 }
+
+int RuntimeConfig::optimizationStageIndex() const noexcept {
+    return optimizationStage.size() == 2 ? optimizationStage[1] - '0' : -1;
+}

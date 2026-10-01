@@ -107,6 +107,7 @@ if(BUILD_TESTING)
         src/PatchCorePostprocessor.cpp
         src/NpyWriter.cpp
         src/Preprocessor.cpp
+        src/RuntimeConfig.cpp
         src/CudaBruteForceSearch.cu
     )
     target_include_directories(

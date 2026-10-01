@@ -18,7 +18,7 @@ struct TensorRTTimings {
 
 class TensorRTInferencer {
 public:
-    explicit TensorRTInferencer(const std::string& enginePath);
+    TensorRTInferencer(const std::string& enginePath, int optimizationStage);
 
     TensorRTInferencer(const TensorRTInferencer&) = delete;
     TensorRTInferencer& operator=(const TensorRTInferencer&) = delete;
@@ -53,8 +53,11 @@ private:
     std::vector<std::int64_t> outputShape_;
     std::size_t inputElements_{0};
     std::size_t outputElements_{0};
+    int optimizationStage_{0};
     CudaBuffer inputBuffer_;
     CudaBuffer outputBuffer_;
+    PinnedHostBuffer pinnedInputBuffer_;
+    PinnedHostBuffer pinnedOutputBuffer_;
     CudaStream stream_;
     CudaEvent h2dStart_;
     CudaEvent h2dEnd_;

@@ -80,6 +80,69 @@ private:
 };
 
 
+class PinnedHostBuffer {
+public:
+    PinnedHostBuffer() = default;
+
+    explicit PinnedHostBuffer(std::size_t bytes) {
+        allocate(bytes);
+    }
+
+    ~PinnedHostBuffer() {
+        release();
+    }
+
+    PinnedHostBuffer(const PinnedHostBuffer&) = delete;
+    PinnedHostBuffer& operator=(const PinnedHostBuffer&) = delete;
+
+    PinnedHostBuffer(PinnedHostBuffer&& other) noexcept
+        : data_(std::exchange(other.data_, nullptr)),
+          bytes_(std::exchange(other.bytes_, 0)) {}
+
+    PinnedHostBuffer& operator=(PinnedHostBuffer&& other) noexcept {
+        if (this != &other) {
+            release();
+            data_ = std::exchange(other.data_, nullptr);
+            bytes_ = std::exchange(other.bytes_, 0);
+        }
+        return *this;
+    }
+
+    void allocate(std::size_t bytes) {
+        if (bytes == 0) {
+            throw std::invalid_argument("Pinned host buffer size must be positive.");
+        }
+        release();
+        checkCuda(cudaMallocHost(&data_, bytes), "cudaMallocHost failed");
+        bytes_ = bytes;
+    }
+
+    void* data() noexcept {
+        return data_;
+    }
+
+    const void* data() const noexcept {
+        return data_;
+    }
+
+    std::size_t sizeBytes() const noexcept {
+        return bytes_;
+    }
+
+private:
+    void release() noexcept {
+        if (data_ != nullptr) {
+            cudaFreeHost(data_);
+            data_ = nullptr;
+            bytes_ = 0;
+        }
+    }
+
+    void* data_{nullptr};
+    std::size_t bytes_{0};
+};
+
+
 class CudaStream {
 public:
     CudaStream() {
@@ -124,6 +187,10 @@ public:
 
     void record(cudaStream_t stream) {
         checkCuda(cudaEventRecord(event_, stream), "cudaEventRecord failed");
+    }
+
+    void synchronize() {
+        checkCuda(cudaEventSynchronize(event_), "cudaEventSynchronize failed");
     }
 
     static float elapsedMilliseconds(const CudaEvent& start, const CudaEvent& end) {

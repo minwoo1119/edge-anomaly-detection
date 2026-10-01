@@ -31,6 +31,9 @@ generate_paper_results = load_module(
 run_coreset_ablation = load_module(
     "run_coreset_ablation", ROOT / "src" / "run_coreset_ablation.py"
 )
+generate_system_configs = load_module(
+    "generate_system_configs", ROOT / "src" / "generate_system_configs.py"
+)
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
@@ -194,6 +197,17 @@ class CoresetAblationTest(unittest.TestCase):
             [run_coreset_ablation.ratio_tag(value) for value in (0.01, 0.025, 0.05, 0.1, 0.2)],
             ["c001", "c0025", "c005", "c01", "c02"],
         )
+
+
+class SystemConfigGenerationTest(unittest.TestCase):
+    def test_stage_replacement(self) -> None:
+        baseline = "precision: fp32\noptimization_stage: S0\nnn_backend: cpu\n"
+        generated = generate_system_configs.with_stage(baseline, "S3")
+        self.assertIn("optimization_stage: S3\n", generated)
+
+    def test_unimplemented_stage_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            generate_system_configs.with_stage("optimization_stage: S0\n", "S5")
 
 
 if __name__ == "__main__":
