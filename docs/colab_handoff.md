@@ -111,3 +111,20 @@ python src/verify_artifact_bundle.py \
 ```
 
 검증된 bundle에 포함된 ONNX/Memory Bank/calibration/reference는 Jetson 전달 대상이며, checkpoint와 accuracy 결과는 로컬 분석 및 재현성 보관 대상입니다.
+
+## Coreset ablation artifacts
+
+1%, 2.5%, 5%, 10%, 20% coreset은 동일 memory bank 파일의 metadata만 바꾸지
+않고 각각 train-normal에서 다시 생성합니다.
+
+```bash
+python src/run_coreset_ablation.py \
+  --dataset-root /content/MVTecAD \
+  --category bottle \
+  --output-root /content/artifacts/coreset_bottle \
+  --accelerator gpu
+```
+
+각 ratio는 독립 checkpoint, training manifest, ONNX, memory bank, export manifest,
+calibration/reference 및 bundle을 갖습니다. 이후 Jetson config의 `coreset_ratio`와
+`memory_bank_path`는 반드시 같은 variant를 가리켜야 합니다.

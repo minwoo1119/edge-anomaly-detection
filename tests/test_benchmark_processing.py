@@ -28,6 +28,9 @@ merge_experiment_results = load_module(
 generate_paper_results = load_module(
     "generate_paper_results", ROOT / "scripts" / "generate_paper_results.py"
 )
+run_coreset_ablation = load_module(
+    "run_coreset_ablation", ROOT / "src" / "run_coreset_ablation.py"
+)
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
@@ -183,6 +186,14 @@ class PaperResultGenerationTest(unittest.TestCase):
         rows = [{"power_mode": "15W"}, {"power_mode": "MAXN"}]
         with self.assertRaises(RuntimeError):
             generate_paper_results.ensure_fixed(rows, ("power_mode",), "precision")
+
+
+class CoresetAblationTest(unittest.TestCase):
+    def test_ratio_tags_are_stable(self) -> None:
+        self.assertEqual(
+            [run_coreset_ablation.ratio_tag(value) for value in (0.01, 0.025, 0.05, 0.1, 0.2)],
+            ["c001", "c0025", "c005", "c01", "c02"],
+        )
 
 
 if __name__ == "__main__":
