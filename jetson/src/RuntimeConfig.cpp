@@ -90,6 +90,7 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     config.precision = required(values, "precision");
     config.bankPrecision = required(values, "bank_precision");
     config.nnBackend = required(values, "nn_backend");
+    config.optimizationStage = required(values, "optimization_stage");
     config.device = required(values, "device");
     config.jetpack = required(values, "jetpack");
     config.cudaVersion = required(values, "cuda_version");
@@ -133,6 +134,12 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
     }
     if (config.nnBackend != "cpu" && config.nnBackend != "openmp" && config.nnBackend != "cuda") {
         throw std::runtime_error("nn_backend must be cpu, openmp, or cuda.");
+    }
+    if (config.optimizationStage.size() != 2
+        || config.optimizationStage[0] != 'S'
+        || config.optimizationStage[1] < '0'
+        || config.optimizationStage[1] > '6') {
+        throw std::runtime_error("optimization_stage must be one of S0 through S6.");
     }
     config.numNeighbors = static_cast<std::size_t>(numNeighbors);
     return config;

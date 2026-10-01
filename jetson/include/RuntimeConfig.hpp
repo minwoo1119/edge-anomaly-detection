@@ -11,6 +11,7 @@ struct RuntimeConfig {
     std::string precision;
     std::string bankPrecision;
     std::string nnBackend;
+    std::string optimizationStage;
     std::string device;
     std::string jetpack;
     std::string cudaVersion;

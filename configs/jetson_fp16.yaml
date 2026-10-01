@@ -7,6 +7,7 @@ model: patchcore_wide_resnet50_2
 precision: fp16
 bank_precision: fp32
 nn_backend: cpu
+optimization_stage: S0
 device: jetson_orin_nano
 jetpack: unknown
 cuda_version: 12.6

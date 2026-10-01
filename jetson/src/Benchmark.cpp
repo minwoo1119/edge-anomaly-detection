@@ -26,6 +26,10 @@
 #define EDGE_BUILD_TYPE "unknown"
 #endif
 
+#ifndef EDGE_COMPILER
+#define EDGE_COMPILER "unknown"
+#endif
+
 namespace {
 double percentile(std::vector<double> sorted, double fraction) {
     std::sort(sorted.begin(), sorted.end());
@@ -76,6 +80,29 @@ std::string csvCell(const std::string& value) {
     escaped += '\"';
     return escaped;
 }
+
+double peakResidentMemoryMb() {
+    std::ifstream status("/proc/self/status");
+    if (!status) throw std::runtime_error("Failed to read /proc/self/status for host memory.");
+    std::string line;
+    std::string residentFallback;
+    while (std::getline(status, line)) {
+        if (line.rfind("VmHWM:", 0) == 0) {
+            std::istringstream values(line.substr(6));
+            double kilobytes = 0.0;
+            values >> kilobytes;
+            if (kilobytes > 0.0) return kilobytes / 1024.0;
+        }
+        if (line.rfind("VmRSS:", 0) == 0) residentFallback = line.substr(6);
+    }
+    if (!residentFallback.empty()) {
+        std::istringstream values(residentFallback);
+        double kilobytes = 0.0;
+        values >> kilobytes;
+        if (kilobytes > 0.0) return kilobytes / 1024.0;
+    }
+    throw std::runtime_error("Host memory was not available in /proc/self/status.");
+}
 }  // namespace
 
 SummaryStatistics summarize(const std::vector<double>& values) {
@@ -125,18 +152,21 @@ void writeBenchmarkCsv(
     const RuntimeConfig& config,
     const BenchmarkMetadata& metadata,
     const std::vector<StageTimings>& samples,
+    std::size_t memoryBankEntries,
     std::size_t memoryBankBytes,
     std::size_t engineBytes
 ) {
     const std::filesystem::path csvPath(path);
     if (csvPath.has_parent_path()) std::filesystem::create_directories(csvPath.parent_path());
     const std::string header =
-        "timestamp,git_commit,git_dirty,build_type,device,jetpack,cuda,tensorrt,opencv,"
-        "power_mode,category,model,precision,coreset_ratio,bank_precision,nn_backend,run_id,"
+        "timestamp,git_commit,git_dirty,compiler,build_type,device,jetpack,cuda,tensorrt,opencv,"
+        "power_mode,category,model,precision,coreset_ratio,bank_precision,nn_backend,"
+        "optimization_stage,run_id,"
         "iteration,decision_enabled,threshold,threshold_space,threshold_source,config_path,"
         "engine_path,memory_bank_path,image_path,config_sha256,engine_sha256,memory_bank_sha256,"
-        "image_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,reshape_ms,nn_ms,post_ms,total_ms,fps,"
-        "bank_memory_mb,engine_size_mb";
+        "image_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,embedding_transform_ms,nn_ms,"
+        "post_ms,total_ms,fps,"
+        "bank_entries,bank_size_mb,engine_size_mb,host_memory_mb";
     const bool writeHeader = !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
     if (!writeHeader) {
         std::ifstream existing(csvPath);
@@ -154,17 +184,20 @@ void writeBenchmarkCsv(
     const std::string timestamp = timestampUtc();
     const double bankMb = static_cast<double>(memoryBankBytes) / (1024.0 * 1024.0);
     const double engineMb = static_cast<double>(engineBytes) / (1024.0 * 1024.0);
+    const double hostMemoryMb = peakResidentMemoryMb();
     for (std::size_t index = 0; index < samples.size(); ++index) {
         const StageTimings& sample = samples[index];
         const double fps = sample.totalMs > 0.0 ? 1000.0 / sample.totalMs : 0.0;
         output << timestamp << ',' << EDGE_GIT_COMMIT << ',' << (EDGE_GIT_DIRTY ? "true" : "false")
-               << ',' << csvCell(EDGE_BUILD_TYPE) << ',' << csvCell(config.device) << ','
+               << ',' << csvCell(EDGE_COMPILER) << ',' << csvCell(EDGE_BUILD_TYPE) << ','
+               << csvCell(config.device) << ','
                << csvCell(config.jetpack) << ',' << csvCell(config.cudaVersion) << ','
                << csvCell(config.tensorrtVersion) << ',' << csvCell(config.opencvVersion) << ','
                << csvCell(config.powerMode) << ',' << csvCell(config.category) << ','
                << csvCell(config.model) << ',' << csvCell(config.precision) << ','
                << config.coresetRatio << ',' << csvCell(config.bankPrecision) << ','
-               << csvCell(config.nnBackend) << ',' << csvCell(config.runId) << ',' << index << ','
+               << csvCell(config.nnBackend) << ',' << csvCell(config.optimizationStage) << ','
+               << csvCell(config.runId) << ',' << index << ','
                << (config.decisionEnabled ? "true" : "false") << ',' << config.threshold << ','
                << csvCell(config.thresholdSpace) << ',' << csvCell(config.thresholdSource) << ','
                << csvCell(metadata.configPath) << ',' << csvCell(config.enginePath) << ','
@@ -174,6 +207,7 @@ void writeBenchmarkCsv(
                << sample.preprocessMs << ',' << sample.h2dMs << ','
                << sample.trtMs << ',' << sample.d2hMs << ',' << sample.reshapeMs << ','
                << sample.nnMs << ',' << sample.postprocessMs << ',' << sample.totalMs << ','
-               << fps << ',' << bankMb << ',' << engineMb << '\n';
+               << fps << ',' << memoryBankEntries << ',' << bankMb << ',' << engineMb << ','
+               << hostMemoryMb << '\n';
     }
 }

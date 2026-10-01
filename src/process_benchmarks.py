@@ -17,7 +17,7 @@ TIMING_FIELDS = (
     "h2d_ms",
     "trt_ms",
     "d2h_ms",
-    "reshape_ms",
+    "embedding_transform_ms",
     "nn_ms",
     "post_ms",
     "total_ms",
@@ -26,6 +26,7 @@ TIMING_FIELDS = (
 IDENTITY_FIELDS = (
     "git_commit",
     "git_dirty",
+    "compiler",
     "build_type",
     "device",
     "jetpack",
@@ -39,6 +40,7 @@ IDENTITY_FIELDS = (
     "coreset_ratio",
     "bank_precision",
     "nn_backend",
+    "optimization_stage",
     "decision_enabled",
     "threshold",
     "threshold_space",
@@ -52,6 +54,11 @@ POWER_FIELDS = (
     "avg_power_w",
     "peak_power_w",
     "energy_per_image_mj",
+    "fps_per_w",
+    "avg_gpu_utilization_pct",
+    "peak_gpu_utilization_pct",
+    "avg_cpu_utilization_pct",
+    "peak_cpu_utilization_pct",
     "max_temperature_c",
     "raw_tegrastats_path",
 )
@@ -113,8 +120,10 @@ def summarize_run(
         "timestamp": first["timestamp"],
         **{field: first[field] for field in IDENTITY_FIELDS},
         "sample_count": len(rows),
-        "bank_memory_mb": first["bank_memory_mb"],
+        "bank_entries": first["bank_entries"],
+        "bank_size_mb": first["bank_size_mb"],
         "engine_size_mb": first["engine_size_mb"],
+        "host_memory_mb": first["host_memory_mb"],
     }
     for field in TIMING_FIELDS:
         try:
@@ -128,6 +137,19 @@ def summarize_run(
         result[f"{prefix}_min"] = min(values)
         result[f"{prefix}_max"] = max(values)
         result[f"{prefix}_p95"] = percentile(values, 0.95)
+    total_mean = float(result["total_mean"])
+    if total_mean <= 0.0:
+        raise RuntimeError(f"Non-positive total_mean in run_id={run_id}")
+    for stage in (
+        "preprocess",
+        "h2d",
+        "trt",
+        "d2h",
+        "embedding_transform",
+        "nn",
+        "post",
+    ):
+        result[f"{stage}_share_pct"] = float(result[f"{stage}_mean"]) / total_mean * 100.0
     for field in POWER_FIELDS:
         result[field] = power[field] if power is not None else ""
     for field in ("checkpoint_sha256", "export_manifest_sha256", "engine_manifest_sha256"):
@@ -167,8 +189,10 @@ def main() -> None:
     required = (
         "timestamp",
         "run_id",
-        "bank_memory_mb",
+        "bank_entries",
+        "bank_size_mb",
         "engine_size_mb",
+        "host_memory_mb",
         *IDENTITY_FIELDS,
         *TIMING_FIELDS,
     )

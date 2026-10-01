@@ -298,6 +298,7 @@ int main(int argc, char* argv[]) {
                 config,
                 commandLine.benchmarkMetadata,
                 samples,
+                memoryBank.rows(),
                 memoryBank.sizeBytes(),
                 static_cast<std::size_t>(std::filesystem::file_size(config.enginePath))
             );

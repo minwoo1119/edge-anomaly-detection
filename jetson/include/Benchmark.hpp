@@ -45,6 +45,7 @@ void writeBenchmarkCsv(
     const RuntimeConfig& config,
     const BenchmarkMetadata& metadata,
     const std::vector<StageTimings>& samples,
+    std::size_t memoryBankEntries,
     std::size_t memoryBankBytes,
     std::size_t engineBytes
 );
