@@ -34,6 +34,9 @@ run_coreset_ablation = load_module(
 generate_system_configs = load_module(
     "generate_system_configs", ROOT / "src" / "generate_system_configs.py"
 )
+run_experiment_matrix = load_module(
+    "run_experiment_matrix", ROOT / "jetson" / "scripts" / "run_experiment_matrix.py"
+)
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
@@ -230,6 +233,16 @@ class SystemConfigGenerationTest(unittest.TestCase):
     def test_unimplemented_stage_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             generate_system_configs.with_stage("optimization_stage: S0\n", "S5")
+
+
+class ExperimentMatrixTest(unittest.TestCase):
+    def test_example_matrix_is_valid(self) -> None:
+        experiments = run_experiment_matrix.load_plan(
+            ROOT / "configs" / "experiment_matrix.example.json"
+        )
+        self.assertEqual(len(experiments), 2)
+        self.assertIn("baseline", experiments[0]["groups"])
+        self.assertIn("system", experiments[0]["groups"])
 
 
 if __name__ == "__main__":

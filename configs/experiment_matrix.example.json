@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "experiments": [
+    {
+      "experiment_id": "e1-bottle-fp32-cpu-s0",
+      "groups": ["baseline", "precision", "coreset", "nn_backend", "system"],
+      "config": "configs/jetson_fp32.yaml",
+      "benchmark_image": "datasets/mvtec/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "e1-bottle-fp16-cpu-s0",
+      "groups": ["precision"],
+      "config": "configs/jetson_fp16.yaml",
+      "benchmark_image": "datasets/mvtec/bottle/test/good/000.png",
+      "category": "bottle"
+    }
+  ]
+}

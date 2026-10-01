@@ -282,3 +282,16 @@ python3 scripts/generate_paper_results.py \
 개발 중 일부 조합만 점검할 때만 `--allow-incomplete`를 사용합니다. 최종 논문
 산출물에서는 이 옵션을 사용하지 않습니다. 입력 CSV hash와 누락 조합은
 `results/result_coverage.json`에 기록됩니다.
+
+Jetson의 전체 accuracy/benchmark 실행은 JSON matrix로 자동화할 수 있습니다.
+
+```bash
+python3 jetson/scripts/run_experiment_matrix.py \
+  --plan configs/experiment_matrix.json \
+  --dataset-root datasets/mvtec \
+  --manifest results/metadata/experiment_matrix.json
+```
+
+실행 전에는 `--dry-run`으로 command와 group 구성을 확인할 수 있습니다. 실제
+실행은 clean git worktree와 configuration별 최소 3회 independent run을 강제하며,
+각 group의 `<group>_results.csv`까지 자동으로 생성합니다.
