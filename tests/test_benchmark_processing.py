@@ -25,6 +25,14 @@ process_benchmarks = load_module(
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
+try:
+    evaluate_runtime = load_module(
+        "evaluate_runtime", ROOT / "jetson" / "scripts" / "evaluate_runtime.py"
+    )
+except ModuleNotFoundError as error:
+    if error.name not in {"numpy", "PIL"}:
+        raise
+    evaluate_runtime = None
 
 
 class TegrastatsTest(unittest.TestCase):
@@ -75,6 +83,21 @@ class BenchmarkSummaryTest(unittest.TestCase):
         self.assertEqual(summary["host_memory_mb"], "32.0")
         self.assertEqual(summary["embedding_transform_share_pct"], 10.0)
         self.assertEqual(summary["nn_share_pct"], 10.0)
+
+
+@unittest.skipIf(evaluate_runtime is None, "NumPy/Pillow are not installed")
+class RuntimeEvaluationTest(unittest.TestCase):
+    def test_binary_auc_with_ties(self) -> None:
+        labels = evaluate_runtime.np.asarray([False, True, False, True])
+        scores = evaluate_runtime.np.asarray([0.0, 0.5, 0.5, 1.0])
+        self.assertAlmostEqual(evaluate_runtime.binary_auc(labels, scores), 0.875)
+
+    def test_binary_auc_rejects_single_class(self) -> None:
+        with self.assertRaises(ValueError):
+            evaluate_runtime.binary_auc(
+                evaluate_runtime.np.asarray([True, True]),
+                evaluate_runtime.np.asarray([0.1, 0.2]),
+            )
 
 
 if __name__ == "__main__":

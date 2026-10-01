@@ -6,3 +6,4 @@ numba==0.61.2
 onnx
 onnxruntime
 onnxscript
+Pillow

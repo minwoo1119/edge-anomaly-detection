@@ -209,3 +209,27 @@ Stage B:
 ```text
 mvtec-bottle_patchcore_fp16_c005_bankfp16_cuda_run01
 ```
+
+---
+
+## 10. Deployment Runtime Accuracy
+
+Precision, coreset, bank precision, NN backend를 비교할 때 PyTorch checkpoint의
+AUROC를 재사용하지 않습니다. 각 C++/TensorRT configuration을 MVTec test split
+전체에 실행해 raw score와 anomaly map으로 AUROC를 다시 계산합니다.
+
+```bash
+python3 jetson/scripts/evaluate_runtime.py \
+  --executable jetson/build/edge_anomaly \
+  --config configs/jetson_fp16.yaml \
+  --dataset-root datasets/mvtec \
+  --category bottle \
+  --work-dir results/raw/runtime_accuracy/bottle-fp16 \
+  --output-csv results/csv/runtime_accuracy.csv \
+  --predictions-csv results/csv/bottle-fp16-predictions.csv \
+  --manifest results/metadata/bottle-fp16-accuracy.json
+```
+
+이 평가는 test set으로 threshold를 선택하지 않으며, `config_sha256`,
+`engine_sha256`, `memory_bank_sha256`, dataset fingerprint를 함께 기록합니다.
+생성된 `runtime_accuracy.csv`가 Table 2–5와 Figure 4/5/8의 정확도 입력입니다.
