@@ -92,6 +92,7 @@ def main() -> None:
     memory_bank = models / "patchcore_memory_bank.npy"
     export_manifest = models / "patchcore_export_manifest.json"
     evaluation_manifest = metadata / f"evaluate_{args.category}.json"
+    threshold_manifest = metadata / f"threshold_{args.category}.json"
     accuracy_csv = csv_directory / "accuracy.csv"
     python = sys.executable
     source = Path(__file__).resolve().parent
@@ -137,6 +138,24 @@ def main() -> None:
     run(
         [
             python,
+            str(source / "calibrate_threshold.py"),
+            "--checkpoint",
+            str(args.checkpoint),
+            "--training-manifest",
+            str(args.training_manifest),
+            "--dataset-root",
+            str(args.dataset_root),
+            "--category",
+            args.category,
+            "--output",
+            str(threshold_manifest),
+            "--device",
+            args.device,
+        ]
+    )
+    run(
+        [
+            python,
             str(source / "export_int8_calibration.py"),
             "--input-dir",
             str(train_normal),
@@ -174,6 +193,8 @@ def main() -> None:
             str(export_manifest),
             "--training-manifest",
             str(args.training_manifest),
+            "--threshold-manifest",
+            str(threshold_manifest),
             "--calibration-dir",
             str(calibration),
             "--reference-dir",

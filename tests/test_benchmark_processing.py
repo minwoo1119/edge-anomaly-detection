@@ -69,6 +69,14 @@ except ModuleNotFoundError as error:
     if error.name != "numpy":
         raise
     analyze_precision_consistency = None
+try:
+    calibrate_threshold = load_module(
+        "calibrate_threshold", ROOT / "src" / "calibrate_threshold.py"
+    )
+except ModuleNotFoundError as error:
+    if error.name not in {"anomalib", "numpy", "torch"}:
+        raise
+    calibrate_threshold = None
 
 
 class TegrastatsTest(unittest.TestCase):
@@ -159,6 +167,18 @@ class PrecisionConsistencyTest(unittest.TestCase):
             np.asarray([[3, 2, 7], [4, 8, 9]]),
         )
         self.assertAlmostEqual(overlap, 0.5)
+
+
+@unittest.skipIf(calibrate_threshold is None, "Threshold dependencies are not installed")
+class ThresholdCalibrationTest(unittest.TestCase):
+    def test_quantile_and_max_thresholds(self) -> None:
+        scores = calibrate_threshold.np.asarray([0.0, 1.0, 2.0, 3.0])
+        self.assertAlmostEqual(
+            calibrate_threshold.select_threshold(scores, "quantile", 0.5), 1.5
+        )
+        self.assertEqual(
+            calibrate_threshold.select_threshold(scores, "max", 0.5), 3.0
+        )
 
 
 class MergeExperimentResultsTest(unittest.TestCase):

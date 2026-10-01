@@ -61,6 +61,7 @@ def main() -> None:
     parser.add_argument("--calibration-dir", type=Path)
     parser.add_argument("--reference-dir", type=Path)
     parser.add_argument("--training-manifest", type=Path, required=True)
+    parser.add_argument("--threshold-manifest", type=Path, required=True)
     parser.add_argument("--evaluation-manifest", type=Path)
     parser.add_argument("--accuracy-csv", type=Path)
     parser.add_argument("--output", type=Path, required=True)
@@ -88,6 +89,17 @@ def main() -> None:
         parser.error(f"training manifest does not exist: {args.training_manifest}")
     if sha256(args.training_manifest) != training_lineage.get("sha256"):
         raise RuntimeError("Training manifest does not match export lineage")
+    if not args.threshold_manifest.is_file():
+        parser.error(f"threshold manifest does not exist: {args.threshold_manifest}")
+    threshold = json.loads(args.threshold_manifest.read_text(encoding="utf-8"))
+    if threshold.get("test_set_used_for_threshold_tuning") is not False:
+        raise RuntimeError("Threshold manifest does not prohibit test-set tuning")
+    if threshold.get("source") != "train_normal" or threshold.get("threshold_space") != "raw":
+        raise RuntimeError("Threshold must be calibrated in raw space from train-normal data")
+    if not isinstance(threshold.get("checkpoint"), dict) or (
+        threshold["checkpoint"].get("sha256") != checkpoint.get("sha256")
+    ):
+        raise RuntimeError("Threshold checkpoint does not match export lineage")
 
     entries: list[dict[str, object]] = []
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -122,6 +134,7 @@ def main() -> None:
             add_directory(archive, args.reference_dir, "reference", entries)
         for source, archive_path in (
             (args.training_manifest, "results/training_manifest.json"),
+            (args.threshold_manifest, "results/threshold_manifest.json"),
             (args.evaluation_manifest, "results/evaluation_manifest.json"),
             (args.accuracy_csv, "results/accuracy.csv"),
         ):

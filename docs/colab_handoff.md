@@ -15,6 +15,9 @@ python src/run_colab_pipeline.py \
   --output-root outputs/colab_bottle_run01
 ```
 
+이 명령은 test set을 사용하지 않고 `train/good`의 raw PatchCore score 99.5% 분위수로
+배포 threshold manifest도 생성합니다. AUROC 평가와 threshold calibration은 서로 분리됩니다.
+
 출력 디렉터리는 매 실행마다 비어 있는 새 경로를 사용합니다. 아래 개별 단계는 실패 지점을 따로 재현하거나 설정을 변경해야 할 때 사용합니다.
 
 ## 1. Colab repository 동기화
@@ -86,10 +89,22 @@ python src/export_patchcore_reference.py \
 
 ## 6. Bundle 생성
 
+먼저 배포 threshold를 train-normal에서 고정합니다.
+
+```bash
+python src/calibrate_threshold.py \
+  --checkpoint models/patchcore_bottle.ckpt \
+  --training-manifest results/metadata/train_bottle.json \
+  --dataset-root datasets/MVTecAD \
+  --category bottle \
+  --output results/metadata/threshold_bottle.json
+```
+
 ```bash
 python src/package_colab_artifacts.py \
   --export-manifest models/patchcore_export_manifest.json \
   --training-manifest results/metadata/train_bottle.json \
+  --threshold-manifest results/metadata/threshold_bottle.json \
   --calibration-dir models/calibration/bottle \
   --reference-dir results/reference \
   --evaluation-manifest results/metadata/evaluate_bottle.json \
