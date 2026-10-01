@@ -78,10 +78,8 @@ TensorRTInferencer::TensorRTInferencer(
     const std::string& enginePath,
     int optimizationStage
 ) : optimizationStage_(optimizationStage) {
-    if (optimizationStage_ < 0 || optimizationStage_ > 5) {
-        throw std::invalid_argument(
-            "TensorRT system optimization stage S6 is not implemented yet."
-        );
+    if (optimizationStage_ < 0 || optimizationStage_ > 6) {
+        throw std::invalid_argument("TensorRT optimization stage must be S0 through S6.");
     }
     const std::vector<char> engineBytes = readEngine(enginePath);
 
@@ -246,8 +244,8 @@ void TensorRTInferencer::inferToDevice(
     const std::vector<float>& input,
     TensorRTTimings* timings
 ) {
-    if (optimizationStage_ != 5) {
-        throw std::logic_error("inferToDevice is only valid for optimization stage S5.");
+    if (optimizationStage_ < 5) {
+        throw std::logic_error("inferToDevice requires optimization stage S5 or S6.");
     }
     if (input.size() != inputElements_) {
         throw std::invalid_argument(

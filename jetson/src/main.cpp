@@ -12,16 +12,20 @@
 #include <opencv2/imgproc.hpp>
 
 #include <algorithm>
-#include <cstdlib>
 #include <cctype>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -169,19 +173,107 @@ struct InferenceRun {
     std::vector<float> embedding;
 };
 
-InferenceRun runInference(
-    const cv::Mat& image,
-    const Preprocessor& preprocessor,
+struct PreparedInput {
+    std::vector<float> values;
+    std::chrono::steady_clock::time_point started;
+    double preprocessMs{0.0};
+};
+
+PreparedInput prepareInput(const cv::Mat& image, const Preprocessor& preprocessor) {
+    const auto start = std::chrono::steady_clock::now();
+    std::vector<float> values = preprocessor.preprocess(image);
+    const auto end = std::chrono::steady_clock::now();
+    const double elapsed = std::chrono::duration<double, std::milli>(end - start).count();
+    return {std::move(values), start, elapsed};
+}
+
+class PreprocessPipeline {
+public:
+    PreprocessPipeline(const cv::Mat& image, const Preprocessor& preprocessor)
+        : image_(image), preprocessor_(preprocessor), worker_(&PreprocessPipeline::work, this) {}
+
+    ~PreprocessPipeline() {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            stop_ = true;
+        }
+        condition_.notify_all();
+        worker_.join();
+    }
+
+    PreprocessPipeline(const PreprocessPipeline&) = delete;
+    PreprocessPipeline& operator=(const PreprocessPipeline&) = delete;
+
+    void request() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (requested_ || ready_) {
+            throw std::logic_error("Preprocessing pipeline queue is full.");
+        }
+        requested_ = true;
+        condition_.notify_all();
+    }
+
+    PreparedInput take() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        condition_.wait(lock, [this] { return ready_ || error_ != nullptr; });
+        if (error_ != nullptr) std::rethrow_exception(error_);
+        PreparedInput output = std::move(*result_);
+        result_.reset();
+        ready_ = false;
+        return output;
+    }
+
+private:
+    void work() noexcept {
+        while (true) {
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                condition_.wait(lock, [this] { return stop_ || requested_; });
+                if (stop_) return;
+                requested_ = false;
+            }
+            try {
+                PreparedInput prepared = prepareInput(image_, preprocessor_);
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (stop_) return;
+                    result_.emplace(std::move(prepared));
+                    ready_ = true;
+                }
+                condition_.notify_all();
+            } catch (...) {
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    error_ = std::current_exception();
+                }
+                condition_.notify_all();
+                return;
+            }
+        }
+    }
+
+    const cv::Mat& image_;
+    const Preprocessor& preprocessor_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    std::optional<PreparedInput> result_;
+    std::exception_ptr error_;
+    bool requested_{false};
+    bool ready_{false};
+    bool stop_{false};
+    std::thread worker_;
+};
+
+InferenceRun runPreparedInference(
+    PreparedInput prepared,
     TensorRTInferencer& inferencer,
     const PatchCorePostprocessor& postprocessor,
     const MemoryBank& memoryBank,
     const INearestNeighborSearch& nearestNeighborSearch,
     bool gpuResidentNn
 ) {
-    const auto totalStart = std::chrono::steady_clock::now();
-    const auto preprocessStart = totalStart;
-    std::vector<float> input = preprocessor.preprocess(image);
-    const auto preprocessEnd = std::chrono::steady_clock::now();
+    std::vector<float> input = std::move(prepared.values);
+    const auto totalStart = prepared.started;
     TensorRTTimings trtTimings;
     const auto& outputShape = inferencer.outputShape();
     PostprocessTimings postprocessTimings;
@@ -217,19 +309,38 @@ InferenceRun runInference(
         );
     }
     const auto totalEnd = std::chrono::steady_clock::now();
-    const auto milliseconds = [](const auto& start, const auto& end) {
-        return std::chrono::duration<double, std::milli>(end - start).count();
-    };
     StageTimings timings;
-    timings.preprocessMs = milliseconds(preprocessStart, preprocessEnd);
+    timings.preprocessMs = prepared.preprocessMs;
     timings.h2dMs = trtTimings.h2dMs;
     timings.trtMs = trtTimings.inferenceMs;
     timings.d2hMs = trtTimings.d2hMs;
     timings.reshapeMs = postprocessTimings.reshapeMs;
     timings.nnMs = postprocessTimings.nearestNeighborMs;
     timings.postprocessMs = postprocessTimings.postprocessMs;
-    timings.totalMs = milliseconds(totalStart, totalEnd);
+    timings.totalMs = std::chrono::duration<double, std::milli>(
+        totalEnd - totalStart
+    ).count();
+    timings.pipelineIntervalMs = timings.totalMs;
     return {std::move(result), timings, std::move(input), std::move(embedding)};
+}
+
+InferenceRun runInference(
+    const cv::Mat& image,
+    const Preprocessor& preprocessor,
+    TensorRTInferencer& inferencer,
+    const PatchCorePostprocessor& postprocessor,
+    const MemoryBank& memoryBank,
+    const INearestNeighborSearch& nearestNeighborSearch,
+    bool gpuResidentNn
+) {
+    return runPreparedInference(
+        prepareInput(image, preprocessor),
+        inferencer,
+        postprocessor,
+        memoryBank,
+        nearestNeighborSearch,
+        gpuResidentNn
+    );
 }
 }  // namespace
 
@@ -306,17 +417,44 @@ int main(int argc, char* argv[]) {
             }
             std::vector<StageTimings> samples;
             samples.reserve(static_cast<std::size_t>(config.repeats));
-            for (int iteration = 0; iteration < config.repeats; ++iteration) {
-                run = runInference(
-                    image,
-                    preprocessor,
-                    inferencer,
-                    postprocessor,
-                    memoryBank,
-                    *nearestNeighborSearch,
-                    gpuResidentNn
+            if (config.optimizationStageIndex() == 6) {
+                PreprocessPipeline pipeline(image, preprocessor);
+                PreparedInput current = prepareInput(image, preprocessor);
+                pipeline.request();
+                runPreparedInference(
+                    std::move(current), inferencer, postprocessor, memoryBank,
+                    *nearestNeighborSearch, gpuResidentNn
                 );
-                samples.push_back(run.timings);
+                current = pipeline.take();
+                auto previousCompletion = std::chrono::steady_clock::now();
+                for (int iteration = 0; iteration < config.repeats; ++iteration) {
+                    pipeline.request();
+                    run = runPreparedInference(
+                        std::move(current), inferencer, postprocessor, memoryBank,
+                        *nearestNeighborSearch, gpuResidentNn
+                    );
+                    const auto completion = std::chrono::steady_clock::now();
+                    run.timings.pipelineIntervalMs =
+                        std::chrono::duration<double, std::milli>(
+                            completion - previousCompletion
+                        ).count();
+                    previousCompletion = completion;
+                    samples.push_back(run.timings);
+                    current = pipeline.take();
+                }
+            } else {
+                for (int iteration = 0; iteration < config.repeats; ++iteration) {
+                    run = runInference(
+                        image,
+                        preprocessor,
+                        inferencer,
+                        postprocessor,
+                        memoryBank,
+                        *nearestNeighborSearch,
+                        gpuResidentNn
+                    );
+                    samples.push_back(run.timings);
+                }
             }
             printBenchmarkSummary(samples);
             writeBenchmarkCsv(

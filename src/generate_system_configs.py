@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate traceable S0-S4 configs from one environment-specific baseline config."""
+"""Generate traceable S0-S6 configs from one environment-specific baseline config."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 
-IMPLEMENTED_STAGES = ("S0", "S1", "S2", "S3", "S4", "S5")
+IMPLEMENTED_STAGES = ("S0", "S1", "S2", "S3", "S4", "S5", "S6")
 
 
 def sha256(path: Path) -> str:
@@ -29,7 +29,7 @@ def with_stage(config_text: str, stage: str) -> str:
         raise ValueError("Baseline config must contain exactly one optimization_stage key")
     prefix = lines[matches[0]][: len(lines[matches[0]]) - len(lines[matches[0]].lstrip())]
     lines[matches[0]] = f"{prefix}optimization_stage: {stage}"
-    if stage == "S5":
+    if stage in {"S5", "S6"}:
         backend_matches = [
             index for index, line in enumerate(lines) if line.strip().startswith("nn_backend:")
         ]

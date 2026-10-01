@@ -132,7 +132,7 @@ FP16
 - [ ] async memcpy
 - [ ] CUDA stream
 - [ ] avoid D2H embedding copy
-- [ ] multithread pipeline
+- [x] multithread preprocessing pipeline (Jetson overlap/성능 검증 대기)
 - [ ] optional double buffering
 - [ ] Nsight profile
 

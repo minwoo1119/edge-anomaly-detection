@@ -61,9 +61,14 @@ def benchmark_metadata(path: Path, run_id: str) -> tuple[dict[str, str], float, 
     run_rows = [row for row in rows if row["run_id"] == run_id]
     if not run_rows:
         raise RuntimeError(f"Benchmark CSV has no rows for run_id={run_id}")
-    mean_total_ms = sum(float(row["total_ms"]) for row in run_rows) / len(run_rows)
+    interval_field = (
+        "pipeline_interval_ms"
+        if "pipeline_interval_ms" in run_rows[0]
+        else "total_ms"
+    )
+    mean_interval_ms = sum(float(row[interval_field]) for row in run_rows) / len(run_rows)
     mean_fps = sum(float(row["fps"]) for row in run_rows) / len(run_rows)
-    return run_rows[-1], mean_total_ms, mean_fps
+    return run_rows[-1], mean_interval_ms, mean_fps
 
 
 def main() -> None:
@@ -77,7 +82,7 @@ def main() -> None:
     samples, temperatures, gpu_utilization, cpu_utilization = tegrastats_samples(
         args.tegrastats
     )
-    metadata, mean_total_ms, mean_fps = benchmark_metadata(
+    metadata, mean_interval_ms, mean_fps = benchmark_metadata(
         args.benchmark_csv, args.run_id
     )
     average_power = sum(samples) / len(samples)
@@ -93,7 +98,7 @@ def main() -> None:
         "samples": len(samples),
         "avg_power_w": average_power,
         "peak_power_w": max(samples),
-        "energy_per_image_mj": average_power * mean_total_ms,
+        "energy_per_image_mj": average_power * mean_interval_ms,
         "fps_per_w": mean_fps / average_power,
         "avg_gpu_utilization_pct": (
             sum(gpu_utilization) / len(gpu_utilization) if gpu_utilization else ""

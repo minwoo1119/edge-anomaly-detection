@@ -133,6 +133,7 @@ void printBenchmarkSummary(const std::vector<StageTimings>& samples) {
     printStage("nn", field(samples, &StageTimings::nnMs));
     printStage("postprocess", field(samples, &StageTimings::postprocessMs));
     printStage("total", field(samples, &StageTimings::totalMs));
+    printStage("pipeline", field(samples, &StageTimings::pipelineIntervalMs));
 }
 
 const char* benchmarkBuildType() noexcept {
@@ -162,10 +163,11 @@ void writeBenchmarkCsv(
         "timestamp,git_commit,git_dirty,compiler,build_type,device,jetpack,cuda,tensorrt,opencv,"
         "power_mode,category,model,precision,coreset_ratio,bank_precision,nn_backend,"
         "optimization_stage,run_id,warmup_iterations,measurement_iterations,"
-        "iteration,decision_enabled,threshold,threshold_space,threshold_source,config_path,"
+        "pipeline_priming_iterations,iteration,decision_enabled,threshold,threshold_space,"
+        "threshold_source,config_path,"
         "engine_path,memory_bank_path,image_path,config_sha256,engine_sha256,memory_bank_sha256,"
         "image_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,embedding_transform_ms,nn_ms,"
-        "post_ms,total_ms,fps,"
+        "post_ms,total_ms,pipeline_interval_ms,fps,"
         "bank_entries,bank_size_mb,engine_size_mb,host_memory_mb";
     const bool writeHeader = !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
     if (!writeHeader) {
@@ -187,7 +189,8 @@ void writeBenchmarkCsv(
     const double hostMemoryMb = peakResidentMemoryMb();
     for (std::size_t index = 0; index < samples.size(); ++index) {
         const StageTimings& sample = samples[index];
-        const double fps = sample.totalMs > 0.0 ? 1000.0 / sample.totalMs : 0.0;
+        const double fps = sample.pipelineIntervalMs > 0.0
+            ? 1000.0 / sample.pipelineIntervalMs : 0.0;
         output << timestamp << ',' << EDGE_GIT_COMMIT << ',' << (EDGE_GIT_DIRTY ? "true" : "false")
                << ',' << csvCell(EDGE_COMPILER) << ',' << csvCell(EDGE_BUILD_TYPE) << ','
                << csvCell(config.device) << ','
@@ -198,7 +201,7 @@ void writeBenchmarkCsv(
                << config.coresetRatio << ',' << csvCell(config.bankPrecision) << ','
                << csvCell(config.nnBackend) << ',' << csvCell(config.optimizationStage) << ','
                << csvCell(config.runId) << ',' << config.warmup << ',' << config.repeats << ','
-               << index << ','
+               << (config.optimizationStageIndex() == 6 ? 1 : 0) << ',' << index << ','
                << (config.decisionEnabled ? "true" : "false") << ',' << config.threshold << ','
                << csvCell(config.thresholdSpace) << ',' << csvCell(config.thresholdSource) << ','
                << csvCell(metadata.configPath) << ',' << csvCell(config.enginePath) << ','
@@ -208,7 +211,8 @@ void writeBenchmarkCsv(
                << sample.preprocessMs << ',' << sample.h2dMs << ','
                << sample.trtMs << ',' << sample.d2hMs << ',' << sample.reshapeMs << ','
                << sample.nnMs << ',' << sample.postprocessMs << ',' << sample.totalMs << ','
-               << fps << ',' << memoryBankEntries << ',' << bankMb << ',' << engineMb << ','
+               << sample.pipelineIntervalMs << ',' << fps << ',' << memoryBankEntries << ','
+               << bankMb << ',' << engineMb << ','
                << hostMemoryMb << '\n';
     }
 }

@@ -11,6 +11,7 @@ embedding_transform
 NN
 postprocess
 total
+pipeline completion interval
 ```
 
 CPU:
@@ -67,6 +68,7 @@ nn_backend
 run_id
 warmup_iterations
 measurement_iterations
+pipeline_priming_iterations
 
 image_auroc
 pixel_auroc
@@ -78,6 +80,7 @@ d2h_ms
 nn_ms
 post_ms
 total_ms
+pipeline_interval_ms
 fps
 
 bank_entries
@@ -89,6 +92,12 @@ avg_power_w
 peak_power_w
 energy_per_image_mj
 ```
+
+`total_ms`는 preprocessing 시작부터 해당 frame 결과 완료까지의 per-frame latency입니다.
+`pipeline_interval_ms`는 연속 결과 완료 간격이며 `fps`는 이 간격에서 계산한 sustained
+throughput입니다. S0-S5에서는 두 값이 같고, S6에서는 서로 다를 수 있습니다. S6는
+측정 전에 pipeline priming 1회를 별도로 수행하며 이를 CSV에 기록합니다. Pipeline의
+`energy_per_image_mj`는 latency가 아니라 completion interval을 기준으로 계산합니다.
 
 ---
 

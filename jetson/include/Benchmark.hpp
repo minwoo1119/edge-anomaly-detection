@@ -15,6 +15,7 @@ struct StageTimings {
     double nnMs{0.0};
     double postprocessMs{0.0};
     double totalMs{0.0};
+    double pipelineIntervalMs{0.0};
 };
 
 struct SummaryStatistics {

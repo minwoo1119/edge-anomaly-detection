@@ -21,6 +21,7 @@ TIMING_FIELDS = (
     "nn_ms",
     "post_ms",
     "total_ms",
+    "pipeline_interval_ms",
     "fps",
 )
 IDENTITY_FIELDS = (
@@ -43,6 +44,7 @@ IDENTITY_FIELDS = (
     "optimization_stage",
     "warmup_iterations",
     "measurement_iterations",
+    "pipeline_priming_iterations",
     "decision_enabled",
     "threshold",
     "threshold_space",
@@ -159,7 +161,12 @@ def summarize_run(
         result[f"{stage}_share_pct"] = float(result[f"{stage}_mean"]) / total_mean * 100.0
     for field in POWER_FIELDS:
         result[field] = power[field] if power is not None else ""
-    for field in ("checkpoint_sha256", "export_manifest_sha256", "engine_manifest_sha256"):
+    for field in (
+        "checkpoint_sha256",
+        "export_manifest_sha256",
+        "engine_manifest_sha256",
+        "threshold_manifest_sha256",
+    ):
         result[field] = lineage.get(field, "") if lineage is not None else ""
     return result
 
@@ -178,7 +185,12 @@ def lineage_by_run(directory: Path | None) -> dict[str, dict[str, str]]:
             raise RuntimeError(f"Duplicate run_id in experiment manifests: {run_id}")
         indexed[run_id] = {
             key: str(lineage[key])
-            for key in ("checkpoint_sha256", "export_manifest_sha256", "engine_manifest_sha256")
+            for key in (
+                "checkpoint_sha256",
+                "export_manifest_sha256",
+                "engine_manifest_sha256",
+                "threshold_manifest_sha256",
+            )
             if key in lineage
         }
     return indexed

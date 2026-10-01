@@ -115,6 +115,8 @@ class BenchmarkSummaryTest(unittest.TestCase):
                 "host_memory_mb": "32.0",
                 "warmup_iterations": "50",
                 "measurement_iterations": "2",
+                "pipeline_priming_iterations": "0",
+                "pipeline_interval_ms": "100",
             }
         )
         row.update({field: "10" for field in process_benchmarks.TIMING_FIELDS})
@@ -314,14 +316,20 @@ class SystemConfigGenerationTest(unittest.TestCase):
         generated = generate_system_configs.with_stage(baseline, "S3")
         self.assertIn("optimization_stage: S3\n", generated)
 
-    def test_unimplemented_stage_is_rejected(self) -> None:
+    def test_unknown_stage_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            generate_system_configs.with_stage("optimization_stage: S0\n", "S6")
+            generate_system_configs.with_stage("optimization_stage: S0\n", "S7")
 
     def test_s5_selects_cuda_backend(self) -> None:
         baseline = "optimization_stage: S0\nnn_backend: cpu\n"
         generated = generate_system_configs.with_stage(baseline, "S5")
         self.assertIn("optimization_stage: S5", generated)
+        self.assertIn("nn_backend: cuda", generated)
+
+    def test_s6_selects_cuda_backend(self) -> None:
+        baseline = "optimization_stage: S0\nnn_backend: cpu\n"
+        generated = generate_system_configs.with_stage(baseline, "S6")
+        self.assertIn("optimization_stage: S6", generated)
         self.assertIn("nn_backend: cuda", generated)
 
 

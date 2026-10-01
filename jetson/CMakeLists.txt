@@ -13,6 +13,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 find_package(OpenCV REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 find_package(OpenMP)
+find_package(Threads REQUIRED)
 
 find_path(
     TENSORRT_INCLUDE_DIR
@@ -60,6 +61,7 @@ target_link_libraries(
     ${OpenCV_LIBS}
     ${TENSORRT_LIBRARY}
     CUDA::cudart
+    Threads::Threads
 )
 
 if(OpenMP_CXX_FOUND)
