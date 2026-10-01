@@ -38,6 +38,11 @@ python src/evaluate.py \
 
 Training/evaluation manifest에는 checkpoint와 dataset fingerprint, 실제 package version을 기록합니다.
 
+Python reference와 C++ runtime의 correctness report는
+`jetson/scripts/validate_runtime_outputs.sh`로 생성합니다. 각 report에는 shape,
+MAE/RMSE/max error/relative L2/cosine similarity와 양쪽 tensor의 min/max/mean/std,
+선택 위치 값이 기록되며 NN index report에는 element agreement rate가 포함됩니다.
+
 ---
 
 ## 2. Primary Variables

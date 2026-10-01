@@ -39,6 +39,14 @@ except ModuleNotFoundError as error:
     if error.name not in {"numpy", "PIL"}:
         raise
     evaluate_runtime = None
+try:
+    compare_runtime = load_module(
+        "compare_runtime", ROOT / "src" / "compare_runtime.py"
+    )
+except ModuleNotFoundError as error:
+    if error.name != "numpy":
+        raise
+    compare_runtime = None
 
 
 class TegrastatsTest(unittest.TestCase):
@@ -106,6 +114,16 @@ class RuntimeEvaluationTest(unittest.TestCase):
                 evaluate_runtime.np.asarray([True, True]),
                 evaluate_runtime.np.asarray([0.1, 0.2]),
             )
+
+
+@unittest.skipIf(compare_runtime is None, "NumPy is not installed")
+class RuntimeComparisonTest(unittest.TestCase):
+    def test_tensor_statistics(self) -> None:
+        values = compare_runtime.np.asarray([1.0, 2.0, 3.0])
+        statistics = compare_runtime.tensor_statistics(values)
+        self.assertEqual(statistics["min"], 1.0)
+        self.assertEqual(statistics["max"], 3.0)
+        self.assertEqual(statistics["mean"], 2.0)
 
 
 class MergeExperimentResultsTest(unittest.TestCase):

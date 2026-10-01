@@ -19,6 +19,16 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def tensor_statistics(values: np.ndarray) -> dict[str, float]:
+    flattened = values.astype(np.float64, copy=False).reshape(-1)
+    return {
+        "min": float(flattened.min()),
+        "max": float(flattened.max()),
+        "mean": float(flattened.mean()),
+        "std": float(flattened.std()),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reference", type=Path, required=True)
@@ -27,6 +37,12 @@ def main() -> None:
     parser.add_argument("--max-error", type=float, default=1e-3)
     parser.add_argument("--min-cosine", type=float, default=0.9999)
     parser.add_argument("--exact", action="store_true")
+    parser.add_argument(
+        "--sample-index",
+        type=int,
+        action="append",
+        help="Flat tensor index to include in the report; may be repeated.",
+    )
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
 
@@ -48,6 +64,22 @@ def main() -> None:
     relative_l2 = float(np.linalg.norm(difference.ravel()) / max(reference_norm, np.finfo(float).eps))
     denominator = reference_norm * float(np.linalg.norm(candidate.ravel()))
     cosine = float(np.dot(reference.ravel(), candidate.ravel()) / max(denominator, np.finfo(float).eps))
+    agreement_rate = float(np.mean(reference_raw == candidate_raw))
+    requested_indices = list(
+        dict.fromkeys(args.sample_index or [0, reference.size // 2, reference.size - 1])
+    )
+    invalid_indices = [index for index in requested_indices if index < 0 or index >= reference.size]
+    if invalid_indices:
+        raise SystemExit(f"FAIL sample indices out of range: {invalid_indices}")
+    selected_values = [
+        {
+            "flat_index": index,
+            "reference": float(reference.reshape(-1)[index]),
+            "candidate": float(candidate.reshape(-1)[index]),
+            "absolute_error": float(absolute.reshape(-1)[index]),
+        }
+        for index in requested_indices
+    ]
     passed = (
         bool(np.array_equal(reference_raw, candidate_raw))
         if args.exact
@@ -56,7 +88,7 @@ def main() -> None:
 
     if args.report is not None:
         report = {
-            "schema_version": 1,
+            "schema_version": 2,
             "reference": str(args.reference.resolve()),
             "reference_sha256": sha256(args.reference),
             "candidate": str(args.candidate.resolve()),
@@ -68,7 +100,11 @@ def main() -> None:
                 "rmse": rmse,
                 "relative_l2": relative_l2,
                 "cosine_similarity": cosine,
+                "element_agreement_rate": agreement_rate,
             },
+            "reference_statistics": tensor_statistics(reference),
+            "candidate_statistics": tensor_statistics(candidate),
+            "selected_values": selected_values,
             "tolerances": {
                 "exact": args.exact,
                 "max_mae": args.max_mae,
@@ -86,6 +122,7 @@ def main() -> None:
     print(f"rmse={rmse:.10g}")
     print(f"relative_l2={relative_l2:.10g}")
     print(f"cosine_similarity={cosine:.10g}")
+    print(f"element_agreement_rate={agreement_rate:.10g}")
     if not passed:
         raise SystemExit("FAIL: numerical tolerance exceeded")
     print("PASS")
