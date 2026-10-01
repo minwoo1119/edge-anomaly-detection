@@ -41,6 +41,8 @@ IDENTITY_FIELDS = (
     "bank_precision",
     "nn_backend",
     "optimization_stage",
+    "warmup_iterations",
+    "measurement_iterations",
     "decision_enabled",
     "threshold",
     "threshold_space",
@@ -114,6 +116,11 @@ def summarize_run(
             raise RuntimeError(
                 f"Metadata changed within run_id={run_id}: {', '.join(changed)}"
             )
+    expected_samples = int(first["measurement_iterations"])
+    if len(rows) != expected_samples:
+        raise RuntimeError(
+            f"run_id={run_id} has {len(rows)} rows, expected {expected_samples}"
+        )
 
     result: dict[str, object] = {
         "run_id": run_id,

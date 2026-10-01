@@ -72,6 +72,8 @@ class BenchmarkSummaryTest(unittest.TestCase):
                 "bank_size_mb": "1.5",
                 "engine_size_mb": "2.5",
                 "host_memory_mb": "32.0",
+                "warmup_iterations": "50",
+                "measurement_iterations": "2",
             }
         )
         row.update({field: "10" for field in process_benchmarks.TIMING_FIELDS})

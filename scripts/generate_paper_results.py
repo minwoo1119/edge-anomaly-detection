@@ -295,7 +295,8 @@ def main() -> None:
                 "category", "precision", "coreset_ratio", "bank_precision",
                 "nn_backend", "optimization_stage", "image_auroc", "pixel_auroc",
                 "total_mean", "accuracy_source", "threshold_tuned_on_test",
-                "sample_count", *ENVIRONMENT_FIELDS,
+                "sample_count", "warmup_iterations", "measurement_iterations",
+                *ENVIRONMENT_FIELDS,
             ),
             name,
         )
@@ -308,6 +309,10 @@ def main() -> None:
             raise RuntimeError(f"{name} contains non-runtime or test-tuned accuracy")
         if not args.allow_incomplete and any(int(row["sample_count"]) < 200 for row in rows):
             raise RuntimeError(f"{name} contains runs with fewer than 200 measurements")
+        if not args.allow_incomplete and any(int(row["warmup_iterations"]) < 50 for row in rows):
+            raise RuntimeError(f"{name} contains runs with fewer than 50 warm-up iterations")
+        if any(row["sample_count"] != row["measurement_iterations"] for row in rows):
+            raise RuntimeError(f"{name} contains incomplete measurement rows")
 
     figures = args.output_root / "figures"
     tables = args.output_root / "tables"

@@ -7,7 +7,7 @@ preprocess
 H2D
 TensorRT
 D2H
-reshape
+embedding_transform
 NN
 postprocess
 total
@@ -65,6 +65,8 @@ coreset_ratio
 bank_precision
 nn_backend
 run_id
+warmup_iterations
+measurement_iterations
 
 image_auroc
 pixel_auroc
@@ -78,8 +80,9 @@ post_ms
 total_ms
 fps
 
+bank_entries
 host_memory_mb
-bank_memory_mb
+bank_size_mb
 engine_size_mb
 
 avg_power_w

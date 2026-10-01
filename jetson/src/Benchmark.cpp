@@ -161,7 +161,7 @@ void writeBenchmarkCsv(
     const std::string header =
         "timestamp,git_commit,git_dirty,compiler,build_type,device,jetpack,cuda,tensorrt,opencv,"
         "power_mode,category,model,precision,coreset_ratio,bank_precision,nn_backend,"
-        "optimization_stage,run_id,"
+        "optimization_stage,run_id,warmup_iterations,measurement_iterations,"
         "iteration,decision_enabled,threshold,threshold_space,threshold_source,config_path,"
         "engine_path,memory_bank_path,image_path,config_sha256,engine_sha256,memory_bank_sha256,"
         "image_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,embedding_transform_ms,nn_ms,"
@@ -197,7 +197,8 @@ void writeBenchmarkCsv(
                << csvCell(config.model) << ',' << csvCell(config.precision) << ','
                << config.coresetRatio << ',' << csvCell(config.bankPrecision) << ','
                << csvCell(config.nnBackend) << ',' << csvCell(config.optimizationStage) << ','
-               << csvCell(config.runId) << ',' << index << ','
+               << csvCell(config.runId) << ',' << config.warmup << ',' << config.repeats << ','
+               << index << ','
                << (config.decisionEnabled ? "true" : "false") << ',' << config.threshold << ','
                << csvCell(config.thresholdSpace) << ',' << csvCell(config.thresholdSource) << ','
                << csvCell(metadata.configPath) << ',' << csvCell(config.enginePath) << ','
