@@ -98,8 +98,14 @@ def main() -> None:
     parser.add_argument("--expected-feature-height", type=positive, default=32)
     parser.add_argument("--expected-feature-width", type=positive, default=32)
     parser.add_argument("--opset", type=positive)
+    parser.add_argument(
+        "--exporter",
+        choices=("dynamo", "torchscript"),
+        default="dynamo",
+    )
     parser.add_argument("--atol", type=float, default=1e-5)
     parser.add_argument("--rtol", type=float, default=1e-4)
+    parser.add_argument("--max-mean-error", type=float, default=1e-5)
     parser.add_argument(
         "--external-data",
         action=argparse.BooleanOptionalAction,
@@ -115,8 +121,9 @@ def main() -> None:
         parser.error(f"validation image does not exist: {args.validation_image}")
     if args.device == "cuda" and not torch.cuda.is_available():
         parser.error("CUDA was requested but is not available")
-    if args.atol < 0 or args.rtol < 0 or not np.isfinite((args.atol, args.rtol)).all():
-        parser.error("atol and rtol must be finite and non-negative")
+    tolerances = (args.atol, args.rtol, args.max_mean_error)
+    if min(tolerances) < 0 or not np.isfinite(tolerances).all():
+        parser.error("atol, rtol, and max-mean-error must be finite and non-negative")
     if args.onnx.suffix.lower() != ".onnx":
         parser.error("--onnx must use the .onnx extension")
     if args.memory_bank.suffix.lower() != ".npy":
@@ -221,7 +228,7 @@ def main() -> None:
     export_options: dict[str, object] = {
         "input_names": ["input"],
         "output_names": ["embedding"],
-        "dynamo": True,
+        "dynamo": args.exporter == "dynamo",
         "external_data": args.external_data,
     }
     if args.opset is not None:
@@ -259,10 +266,14 @@ def main() -> None:
             f"ONNX output contract mismatch: expected {expected_shape}, got {onnx_embedding.shape}"
         )
     absolute_error = np.abs(pytorch_numpy - onnx_embedding)
-    if not np.allclose(pytorch_numpy, onnx_embedding, atol=args.atol, rtol=args.rtol):
+    mean_absolute_error = float(absolute_error.mean())
+    if (
+        not np.allclose(pytorch_numpy, onnx_embedding, atol=args.atol, rtol=args.rtol)
+        or mean_absolute_error > args.max_mean_error
+    ):
         raise RuntimeError(
             f"PyTorch/ONNX mismatch: max_abs_error={absolute_error.max():.9g}, "
-            f"mean_abs_error={absolute_error.mean():.9g}"
+            f"mean_abs_error={mean_absolute_error:.9g}"
         )
 
     np.save(args.memory_bank, memory_bank, allow_pickle=False)
@@ -289,6 +300,7 @@ def main() -> None:
             "onnxruntime": str(ort.__version__),
         },
         "device": str(device),
+        "exporter": args.exporter,
         "validation_source": validation_source,
         "validation_image_sha256": validation_image_sha256,
         "input_shape": list(validation_input.shape),
@@ -303,8 +315,9 @@ def main() -> None:
             "wrapper_core_max_abs_error": wrapper_error,
             "atol": args.atol,
             "rtol": args.rtol,
+            "max_mean_error": args.max_mean_error,
             "max_abs_error": float(absolute_error.max()),
-            "mean_abs_error": float(absolute_error.mean()),
+            "mean_abs_error": mean_absolute_error,
             "passed": True,
         },
         "artifacts": [
@@ -326,6 +339,7 @@ def main() -> None:
     print(f"embedding_shape={tuple(pytorch_embedding.shape)}")
     print(f"memory_bank_shape={memory_bank.shape}")
     print(f"max_abs_error={absolute_error.max():.9g}")
+    print(f"mean_abs_error={mean_absolute_error:.9g}")
 
 
 if __name__ == "__main__":

@@ -12,11 +12,20 @@ python src/run_colab_pipeline.py \
   --training-manifest results/metadata/train_bottle.json \
   --dataset-root datasets/MVTecAD \
   --category bottle \
-  --output-root outputs/colab_bottle_run01
+  --output-root outputs/colab_bottle_run01 \
+  --device cuda \
+  --export-device cpu
 ```
 
 이 명령은 test set을 사용하지 않고 `train/good`의 raw PatchCore score 99.5% 분위수로
 배포 threshold manifest도 생성합니다. AUROC 평가와 threshold calibration은 서로 분리됩니다.
+평가·threshold·reference는 CUDA에서 실행하고, ONNX 수치 검증은 ONNX Runtime과 동일한
+CPU 기준으로 수행해 장치별 커널 오차가 export gate에 섞이지 않게 합니다.
+PyTorch 2.11의 `dynamo` exporter가 정적 PatchCore feature graph에서 실패하는 환경을
+피하기 위해 pipeline은 `torchscript` exporter를 명시하며, 생성 결과에는 동일하게
+ONNX checker와 ONNX Runtime 수치 검증을 적용합니다.
+FP32 convolution 구현 차이는 최대 절대 오차 `3e-4`로 제한하고, 일부 지점의 큰 오차가
+전체 분포 오차를 가리지 않도록 평균 절대 오차도 `1e-5` 이하로 별도 검증합니다.
 
 출력 디렉터리는 매 실행마다 비어 있는 새 경로를 사용합니다. 아래 개별 단계는 실패 지점을 따로 재현하거나 설정을 변경해야 할 때 사용합니다.
 

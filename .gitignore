@@ -26,3 +26,13 @@ outputs/
 *.npy
 
 *.ckpt
+
+.venv/
+venv/
+node_modules/
+data/
+datasets/
+checkpoints/
+*.pth
+*.onnx
+*.engine

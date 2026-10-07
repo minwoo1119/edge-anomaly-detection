@@ -52,6 +52,7 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--calibration-images", type=int, default=100)
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cuda")
+    parser.add_argument("--export-device", choices=("cpu", "cuda"), default="cpu")
     args = parser.parse_args()
 
     if not args.checkpoint.is_file():
@@ -132,7 +133,13 @@ def main() -> None:
             "--validation-image",
             str(validation_image),
             "--device",
-            args.device,
+            args.export_device,
+            "--exporter",
+            "torchscript",
+            "--atol",
+            "3e-4",
+            "--max-mean-error",
+            "1e-5",
         ]
     )
     run(
