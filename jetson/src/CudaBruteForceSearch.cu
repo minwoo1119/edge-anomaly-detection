@@ -1,6 +1,7 @@
 #include "CudaNearestNeighborSearch.hpp"
 
 #include <cuda_runtime.h>
+#include <math_constants.h>
 
 #include <algorithm>
 #include <cmath>

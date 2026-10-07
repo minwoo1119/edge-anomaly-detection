@@ -27,9 +27,9 @@ echo "[trtexec]"
 
 if command -v trtexec &> /dev/null; then
     which trtexec
-    trtexec --version
+    trtexec --help
 elif [ -f /usr/src/tensorrt/bin/trtexec ]; then
-    /usr/src/tensorrt/bin/trtexec --version
+    /usr/src/tensorrt/bin/trtexec --help
 else
     echo "trtexec not found."
 fi

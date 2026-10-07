@@ -19,6 +19,11 @@ models/
 # Outputs
 outputs/
 
+# Local Jetson build, experiment results, and model backups
+jetson/build/
+results/
+models_before_colab_*/
+
 # TensorRT / ONNX
 *.engine
 *.onnx

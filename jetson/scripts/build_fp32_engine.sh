@@ -49,12 +49,14 @@ echo
 "${TRTEXEC}" \
     --onnx="${ONNX_MODEL}" \
     --saveEngine="${ENGINE_MODEL}" \
+    --noTF32 \
     --skipInference
 
 python3 "${PROJECT_ROOT}/jetson/scripts/write_engine_manifest.py" \
     --onnx "${ONNX_MODEL}" \
     --engine "${ENGINE_MODEL}" \
     --precision fp32 \
+    --no-tf32 \
     --trtexec "${TRTEXEC}" \
     --output "${ENGINE_MANIFEST}" \
     --export-manifest "${EXPORT_MANIFEST}"

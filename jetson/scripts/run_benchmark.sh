@@ -19,6 +19,11 @@ READY_FILE="${CONTROL_DIR}/warmup.ready"
 START_FILE="${CONTROL_DIR}/measurement.start"
 TEGRAPID=""
 BENCHPID=""
+WARMUP_TIMEOUT_SECONDS="${EDGE_WARMUP_TIMEOUT_SECONDS:-1800}"
+if [[ ! "${WARMUP_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: EDGE_WARMUP_TIMEOUT_SECONDS must be a positive integer." >&2
+    exit 1
+fi
 
 cleanup() {
     if [[ -n "${BENCHPID}" ]] && kill -0 "${BENCHPID}" 2>/dev/null; then
@@ -141,17 +146,24 @@ cd "${PROJECT_ROOT}"
     --benchmark-start "${START_FILE}" &
 BENCHPID=$!
 
-for _ in $(seq 1 1200); do
+warmup_started=${SECONDS}
+next_progress=$((SECONDS + 15))
+echo "Waiting for engine initialization and warm-up (timeout: ${WARMUP_TIMEOUT_SECONDS}s)."
+while (( SECONDS - warmup_started < WARMUP_TIMEOUT_SECONDS )); do
     if [[ -f "${READY_FILE}" ]]; then break; fi
     if ! kill -0 "${BENCHPID}" 2>/dev/null; then
         wait "${BENCHPID}"
         echo "ERROR: benchmark exited before completing warm-up." >&2
         exit 1
     fi
-    sleep 0.05
+    if (( SECONDS >= next_progress )); then
+        echo "Warm-up pending: $((SECONDS - warmup_started))s elapsed; benchmark process is alive."
+        next_progress=$((SECONDS + 15))
+    fi
+    sleep 0.1
 done
 if [[ ! -f "${READY_FILE}" ]]; then
-    echo "ERROR: timed out waiting for benchmark warm-up." >&2
+    echo "ERROR: timed out waiting for benchmark warm-up after ${WARMUP_TIMEOUT_SECONDS}s." >&2
     exit 1
 fi
 

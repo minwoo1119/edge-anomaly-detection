@@ -45,6 +45,7 @@ def main() -> None:
     parser.add_argument("--trtexec", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--export-manifest", type=Path)
+    parser.add_argument("--no-tf32", action="store_true")
     args = parser.parse_args()
 
     for path in (args.onnx, args.engine, args.trtexec):
@@ -63,11 +64,12 @@ def main() -> None:
         "precision": args.precision,
         "git_commit": output(["git", "-C", str(repository), "rev-parse", "HEAD"]),
         "git_dirty": bool(output(["git", "-C", str(repository), "status", "--porcelain"])),
-        "trtexec_version": output([str(args.trtexec), "--version"]),
+        "trtexec_version": output([str(args.trtexec), "--help"]),
         "builder_flags": [
             f"--onnx={args.onnx}",
             f"--saveEngine={args.engine}",
             *(["--fp16"] if args.precision == "fp16" else []),
+            *(["--noTF32"] if args.no_tf32 else []),
             "--skipInference",
         ],
         "artifacts": {

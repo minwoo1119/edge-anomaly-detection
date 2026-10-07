@@ -87,7 +87,8 @@ def dataset_fingerprint(paths: list[Path], root: Path) -> str:
 
 def load_mask(path: Path, shape: tuple[int, int]) -> np.ndarray:
     with Image.open(path) as image:
-        mask = image.convert("L").resize((shape[1], shape[0]), Image.Resampling.NEAREST)
+        resampling = getattr(Image, "Resampling", Image)
+        mask = image.convert("L").resize((shape[1], shape[0]), resampling.NEAREST)
         return np.asarray(mask, dtype=np.uint8) > 0
 
 

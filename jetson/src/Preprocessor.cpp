@@ -2,9 +2,67 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 
+namespace {
+struct ResizeWeights {
+    int start;
+    std::vector<float> values;
+};
+
+// Match tensor bilinear resize with antialias=True and align_corners=False.
+std::vector<ResizeWeights> resizeWeights(int sourceSize, int targetSize) {
+    const float scale = static_cast<float>(sourceSize) / targetSize;
+    const float support = std::max(scale, 1.0F);
+    std::vector<ResizeWeights> result;
+    result.reserve(targetSize);
+    for (int output = 0; output < targetSize; ++output) {
+        const float center = scale * (output + 0.5F);
+        const int start = std::max(static_cast<int>(center - support + 0.5F), 0);
+        const int end = std::min(static_cast<int>(center + support + 0.5F), sourceSize);
+        ResizeWeights weights{start, {}};
+        float sum = 0.0F;
+        for (int input = start; input < end; ++input) {
+            const float weight = std::max(0.0F,
+                1.0F - std::abs((input + 0.5F - center) / support));
+            weights.values.push_back(weight);
+            sum += weight;
+        }
+        for (float& weight : weights.values) weight /= sum;
+        result.push_back(std::move(weights));
+    }
+    return result;
+}
+
+cv::Mat resizeAntialiased(const cv::Mat& source, int width, int height) {
+    const auto horizontal = resizeWeights(source.cols, width);
+    const auto vertical = resizeWeights(source.rows, height);
+    cv::Mat intermediate(source.rows, width, CV_32FC3);
+    for (int y = 0; y < source.rows; ++y) {
+        for (int x = 0; x < width; ++x) {
+            cv::Vec3f value(0, 0, 0);
+            const auto& weights = horizontal[x];
+            for (std::size_t i = 0; i < weights.values.size(); ++i)
+                value += source.at<cv::Vec3f>(y, weights.start + i) * weights.values[i];
+            intermediate.at<cv::Vec3f>(y, x) = value;
+        }
+    }
+    cv::Mat result(height, width, CV_32FC3);
+    for (int y = 0; y < height; ++y) {
+        const auto& weights = vertical[y];
+        for (int x = 0; x < width; ++x) {
+            cv::Vec3f value(0, 0, 0);
+            for (std::size_t i = 0; i < weights.values.size(); ++i)
+                value += intermediate.at<cv::Vec3f>(weights.start + i, x) * weights.values[i];
+            result.at<cv::Vec3f>(y, x) = value;
+        }
+    }
+    return result;
+}
+} // namespace
 
 Preprocessor::Preprocessor(
     int inputWidth,
@@ -23,19 +81,9 @@ std::vector<float> Preprocessor::preprocess(
         );
     }
 
-    cv::Mat resized;
-    cv::resize(
-        image,
-        resized,
-        cv::Size(
-            inputWidth_,
-            inputHeight_
-        )
-    );
-
     cv::Mat rgb;
     cv::cvtColor(
-        resized,
+        image,
         rgb,
         cv::COLOR_BGR2RGB
     );
@@ -46,6 +94,7 @@ std::vector<float> Preprocessor::preprocess(
         CV_32FC3,
         1.0 / 255.0
     );
+    floatImage = resizeAntialiased(floatImage, inputWidth_, inputHeight_);
 
     const std::vector<float> mean = {
         0.485f,
