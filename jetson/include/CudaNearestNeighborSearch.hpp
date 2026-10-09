@@ -11,7 +11,7 @@ public:
     };
 
     CudaBruteForceSearch(const MemoryBank& memoryBank, std::size_t maximumQueries,
-                        bool warpParallel = false);
+                        bool warpParallel = false, bool tiled = false);
 
     SearchResult search(
         const float* queries,
@@ -30,6 +30,7 @@ public:
 
 private:
     bool warpParallel_{false};
+    bool tiled_{false};
     std::size_t rows_{0};
     std::size_t dimensions_{0};
     std::size_t maximumQueries_{0};

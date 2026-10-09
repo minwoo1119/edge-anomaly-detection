@@ -414,11 +414,12 @@ int main(int argc, char* argv[]) {
         validateTensorShapes(inferencer, config, memoryBank);
         const auto& outputShape = inferencer.outputShape();
         std::unique_ptr<INearestNeighborSearch> nearestNeighborSearch;
-        if (config.nnBackend == "cuda" || config.nnBackend == "cuda_warp") {
+        if (config.nnBackend == "cuda" || config.nnBackend == "cuda_warp" || config.nnBackend == "cuda_tiled") {
             nearestNeighborSearch = std::make_unique<CudaBruteForceSearch>(
                 memoryBank,
                 static_cast<std::size_t>(outputShape[2] * outputShape[3]),
-                config.nnBackend == "cuda_warp"
+                config.nnBackend == "cuda_warp",
+                config.nnBackend == "cuda_tiled"
             );
         } else {
             nearestNeighborSearch = std::make_unique<CpuBruteForceSearch>(

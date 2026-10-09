@@ -82,11 +82,11 @@ void testCpuCudaAgreement() {
     }
 }
 
-void testWarpCudaSearch() {
+void testWarpCudaSearch(bool tiled = false) {
     // Tail dimensions, partial bank traversal, ties across warps, and NCHW input.
     constexpr std::size_t dimensions = 65;
     constexpr std::size_t rows = 17;
-    constexpr std::size_t count = 3;
+    constexpr std::size_t count = 11;
     std::vector<float> values(rows * dimensions);
     for (std::size_t r = 0; r < rows; ++r)
         for (std::size_t d = 0; d < dimensions; ++d)
@@ -96,12 +96,12 @@ void testWarpCudaSearch() {
     std::vector<float> queries(count * dimensions), nchw(queries.size());
     for (std::size_t q = 0; q < count; ++q)
         for (std::size_t d = 0; d < dimensions; ++d) {
-            queries[q * dimensions + d] = values[q * 5 * dimensions + d] + 0.125F;
+            queries[q * dimensions + d] = values[(q % 3) * 5 * dimensions + d] + 0.125F;
             nchw[d * count + q] = queries[q * dimensions + d];
         }
     const CpuBruteForceSearch cpu;
     const auto expected = cpu.search(queries.data(), count, dimensions, bank);
-    const CudaBruteForceSearch optimized(bank, count, true);
+    const CudaBruteForceSearch optimized(bank, count, true, tiled);
     const auto actual = optimized.search(queries.data(), count, dimensions, bank);
     require(actual.indices == expected.indices, "Warp CUDA nearest indices differ");
     require(actual.indices[0] == 0, "Warp CUDA must select lowest tied index");
@@ -209,6 +209,7 @@ int main() {
         testCpuCudaAgreement();
         testCpuCudaTieBreaking();
         testWarpCudaSearch();
+        testWarpCudaSearch(true);
         testDeviceNchwNearestNeighbor();
         testMemoryBankRejectsNonFiniteValues();
         testPostprocessing();

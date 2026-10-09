@@ -133,8 +133,8 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
         );
     }
     if (config.nnBackend != "cpu" && config.nnBackend != "openmp"
-        && config.nnBackend != "cuda" && config.nnBackend != "cuda_warp") {
-        throw std::runtime_error("nn_backend must be cpu, openmp, cuda, or cuda_warp.");
+        && config.nnBackend != "cuda" && config.nnBackend != "cuda_warp" && config.nnBackend != "cuda_tiled") {
+        throw std::runtime_error("nn_backend must be cpu, openmp, cuda, cuda_warp, or cuda_tiled.");
     }
     if (config.optimizationStage.size() != 2
         || config.optimizationStage[0] != 'S'
@@ -143,7 +143,7 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
         throw std::runtime_error("optimization_stage must be one of S0 through S6.");
     }
     const int optimizationStage = config.optimizationStage[1] - '0';
-    if (optimizationStage >= 5 && config.nnBackend != "cuda" && config.nnBackend != "cuda_warp") {
+    if (optimizationStage >= 5 && config.nnBackend != "cuda" && config.nnBackend != "cuda_warp" && config.nnBackend != "cuda_tiled") {
         throw std::runtime_error("S5 and S6 require a CUDA NN backend.");
     }
     config.numNeighbors = static_cast<std::size_t>(numNeighbors);

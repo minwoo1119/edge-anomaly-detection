@@ -15,6 +15,59 @@
 namespace {
 constexpr int threadsPerBlock = 256;
 
+// Eight query warps reuse four full bank rows staged by the whole block.
+// Invalid tail queries still participate in every block barrier.
+template<bool nchwLayout>
+__global__ void tiledNearestNeighborKernel(
+    const float* queries, const float* bank, std::size_t queryCount,
+    std::size_t bankRows, std::size_t dimensions,
+    float* outputDistances, unsigned long long* outputIndices
+) {
+    constexpr int bankTile = 4;
+    constexpr int queryTile = threadsPerBlock / 32;
+    const int lane = threadIdx.x % 32;
+    const std::size_t q = blockIdx.x * queryTile + threadIdx.x / 32;
+    extern __shared__ float bankCache[];
+    float best = CUDART_INF_F;
+    unsigned long long bestIndex = 0;
+    for (std::size_t base = 0; base < bankRows; base += bankTile) {
+        const int rows = static_cast<int>(min(static_cast<unsigned long long>(bankTile),
+                                            static_cast<unsigned long long>(bankRows - base)));
+        for (std::size_t i = threadIdx.x; i < rows * dimensions; i += blockDim.x)
+            bankCache[i] = bank[base * dimensions + i];
+        __syncthreads();
+        float squared[bankTile] = {0.0F, 0.0F, 0.0F, 0.0F};
+        if (q < queryCount) {
+            for (std::size_t d = lane; d < dimensions; d += 32) {
+                const float value = nchwLayout ? queries[d * queryCount + q]
+                                              : queries[q * dimensions + d];
+                #pragma unroll
+                for (int r = 0; r < bankTile; ++r) {
+                    if (r < rows) {
+                        const float difference = value - bankCache[r * dimensions + d];
+                        squared[r] = fmaf(difference, difference, squared[r]);
+                    }
+                }
+            }
+        }
+        #pragma unroll
+        for (int r = 0; r < bankTile; ++r) {
+            for (int offset = 16; offset > 0; offset /= 2)
+                squared[r] += __shfl_down_sync(0xffffffffU, squared[r], offset);
+            if (q < queryCount && lane == 0 && r < rows
+                && (squared[r] < best || (squared[r] == best && base + r < bestIndex))) {
+                best = squared[r];
+                bestIndex = base + r;
+            }
+        }
+        __syncthreads();
+    }
+    if (q < queryCount && lane == 0) {
+        outputDistances[q] = sqrtf(best);
+        outputIndices[q] = bestIndex;
+    }
+}
+
 // One warp cooperates on a bank row: adjacent lanes read adjacent dimensions.
 // Cache the query once per block, including for device-resident NCHW inputs.
 template<bool nchwLayout>
@@ -191,8 +244,9 @@ __global__ void gatherNchwPatchKernel(
 CudaBruteForceSearch::CudaBruteForceSearch(
     const MemoryBank& memoryBank,
     std::size_t maximumQueries,
-    bool warpParallel
-) : warpParallel_(warpParallel), rows_(memoryBank.rows()),
+    bool warpParallel,
+    bool tiled
+) : warpParallel_(warpParallel), tiled_(tiled), rows_(memoryBank.rows()),
     dimensions_(memoryBank.dimensions()),
     maximumQueries_(maximumQueries),
     bankBuffer_(memoryBank.sizeBytes()),
@@ -201,6 +255,15 @@ CudaBruteForceSearch::CudaBruteForceSearch(
     indexBuffer_(maximumQueries * sizeof(unsigned long long)) {
     if (maximumQueries_ == 0) {
         throw std::invalid_argument("CUDA NN maximum query count must be positive.");
+    }
+    if (tiled_) {
+        int device = 0;
+        int sharedLimit = 0;
+        checkCuda(cudaGetDevice(&device), "CUDA NN device query failed");
+        checkCuda(cudaDeviceGetAttribute(&sharedLimit, cudaDevAttrMaxSharedMemoryPerBlock, device),
+                  "CUDA NN shared-memory limit query failed");
+        if (dimensions_ > static_cast<std::size_t>(sharedLimit) / (4 * sizeof(float)))
+            throw std::invalid_argument("CUDA tiled bank rows exceed shared-memory capacity.");
     }
     checkCuda(
         cudaMemcpyAsync(
@@ -234,7 +297,14 @@ SearchResult CudaBruteForceSearch::search(
         ),
         "CUDA NN query H2D copy failed"
     );
-    if (warpParallel_) {
+    if (tiled_) {
+        tiledNearestNeighborKernel<false><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 4 * dimensions_ * sizeof(float), stream_.get()>>>(
+            static_cast<const float*>(queryBuffer_.data()),
+            static_cast<const float*>(bankBuffer_.data()), queryCount, rows_, dimensions_,
+            static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (warpParallel_) {
         warpNearestNeighborKernel<false><<<static_cast<unsigned int>(queryCount), threadsPerBlock,
             dimensions_ * sizeof(float), stream_.get()>>>(
             static_cast<const float*>(queryBuffer_.data()),
@@ -300,7 +370,13 @@ CudaBruteForceSearch::DeviceNchwResult CudaBruteForceSearch::searchDeviceNchw(
     }
 
     searchStart_.record(stream_.get());
-    if (warpParallel_) {
+    if (tiled_) {
+        tiledNearestNeighborKernel<true><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 4 * dimensions_ * sizeof(float), stream_.get()>>>(
+            deviceNchw, static_cast<const float*>(bankBuffer_.data()), queryCount, rows_, dimensions_,
+            static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (warpParallel_) {
         warpNearestNeighborKernel<true><<<static_cast<unsigned int>(queryCount), threadsPerBlock,
             dimensions_ * sizeof(float), stream_.get()>>>(
             deviceNchw, static_cast<const float*>(bankBuffer_.data()), queryCount, rows_, dimensions_,

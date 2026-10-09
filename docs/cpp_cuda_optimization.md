@@ -173,6 +173,27 @@ power도 함께 측정.
 
 ## 9. CUDA NN
 
+`nn_backend: cuda_tiled` preserves the warp baseline as a separate backend and
+stages four bank rows in shared memory for reuse by eight query warps per block.
+One warp computes one query's distances, using direct squared differences and
+FP32 accumulation. Both patch-major and device NCHW input are supported. Tail
+queries participate in block barriers without reading or writing invalid queries;
+tail bank rows are bounded and ties select the lowest bank index. At 1536
+dimensions the bank tile uses 24 KiB shared memory. Unsupported shared-memory
+requirements are rejected during initialization.
+
+FP16 tiled bottle evaluation measured Image AUROC 1.0 and Pixel AUROC
+0.985454531. Three runs of `e5-bottle-fp16-cuda-tiled` averaged 535.578 ms
+NN time, 635.681 ms total latency, 15.728 W, and 9.992 J/image. Relative to
+the warp experiment, latency decreased about 25% but energy/image increased
+about 6.6%. These fixed-image measurements preserve the original logs and
+dirty-build provenance; they do not establish a universal backend winner.
+
+Use `configs/jetson_fp16_cuda_tiled.yaml` or
+`configs/jetson_fp32_cuda_tiled.yaml`. Validate against `cuda_warp` before
+collecting full AUROC and three-run timing/power measurements. Performance is
+not assumed to improve: barriers and shared-memory occupancy can offset reuse.
+
 `nn_backend: cuda` preserves the original thread-per-bank-row baseline.
 `nn_backend: cuda_warp` uses one warp per bank row, divides dimensions across
 32 lanes, reduces partial squared distances with warp shuffles, and caches the
