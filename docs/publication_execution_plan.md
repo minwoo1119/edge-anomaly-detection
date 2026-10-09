@@ -41,6 +41,10 @@ Exit criterion: artifact-matched runtime accuracy and three-run measurements for
 each reported configuration. If INT8 is unstable or unsupported, report the
 negative result and narrow the paper claim rather than silently omitting it.
 
+After building the INT8 engine, the controlled S5 precision plan is
+`configs/paper_precision_matrix.json`. Run it with a dedicated accuracy CSV so
+earlier development evaluations cannot collide with final publication records.
+
 ## Gate 4 — Retrieval and system ablation
 
 Use one fixed artifact chain. Compare CPU brute force, the direct CUDA baseline,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -376,6 +377,19 @@ class ExperimentMatrixTest(unittest.TestCase):
         self.assertEqual(len(experiments), 2)
         self.assertIn("baseline", experiments[0]["groups"])
         self.assertIn("system", experiments[0]["groups"])
+
+    def test_resume_output_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = tuple(root / name for name in ("work", "predictions", "manifest", "summary"))
+            self.assertEqual(run_experiment_matrix.completed_output_state(paths), "absent")
+            paths[0].mkdir()
+            self.assertEqual(run_experiment_matrix.completed_output_state(paths), "absent")
+            (paths[0] / "map.npy").write_bytes(b"data")
+            self.assertEqual(run_experiment_matrix.completed_output_state(paths), "partial")
+            for path in paths[1:]:
+                path.write_text("complete", encoding="utf-8")
+            self.assertEqual(run_experiment_matrix.completed_output_state(paths), "complete")
 
 
 if __name__ == "__main__":

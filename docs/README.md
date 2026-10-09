@@ -17,6 +17,9 @@
 - `jetson_deployment.md` — Jetson Orin Nano 배포 및 빌드 절차
 - `paper_plan.md` — 논문 가설, 기여점, figure/table 및 섹션 구성
 - `publication_execution_plan.md` — 투고까지의 실험 gate, 완료 조건, 현재 진행 위치
+- `../paper/claims_and_evidence.md` — 논문 주장별 근거와 아직 주장할 수 없는 항목
+- `../paper/manuscript_outline.md` — 12쪽 원고 구조와 결과 배치 계획
+- `../paper/references.bib` — 검증된 핵심 1차 문헌의 참고문헌 데이터
 - `agent_instructions.md` — 개발 에이전트가 따라야 할 규칙
 
 ## 현재 상태

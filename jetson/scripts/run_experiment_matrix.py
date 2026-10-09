@@ -29,6 +29,15 @@ def run(command: list[str], dry_run: bool) -> None:
         subprocess.run(command, check=True)
 
 
+def completed_output_state(paths: tuple[Path, ...]) -> str:
+    present = [path.exists() and (not path.is_dir() or any(path.iterdir())) for path in paths]
+    if all(present):
+        return "complete"
+    if any(present):
+        return "partial"
+    return "absent"
+
+
 def load_plan(path: Path) -> list[dict[str, object]]:
     document = json.loads(path.read_text(encoding="utf-8"))
     if document.get("schema_version") != 1 or not isinstance(document.get("experiments"), list):
@@ -69,6 +78,7 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--independent-runs", type=int, default=3)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
     if not args.plan.is_file():
@@ -95,6 +105,7 @@ def main() -> None:
         raise RuntimeError("Experiment matrix requires a clean git worktree")
 
     commands: list[list[str]] = []
+    skipped_experiments: list[str] = []
     summaries_by_group: dict[str, list[Path]] = {}
     python = sys.executable
     for experiment in experiments:
@@ -105,6 +116,10 @@ def main() -> None:
             for path in (config, image):
                 if not path.is_file():
                     raise RuntimeError(f"experiment input does not exist: {path}")
+        work_dir = repository / "results" / "raw" / "runtime_accuracy" / experiment_id
+        predictions = repository / "results" / "csv" / f"{experiment_id}_predictions.csv"
+        accuracy_manifest = repository / "results" / "metadata" / f"{experiment_id}_accuracy.json"
+        summary = repository / "results" / "processed" / f"{experiment_id}_run_summary.csv"
         accuracy_command = [
             python,
             str(repository / "jetson" / "scripts" / "evaluate_runtime.py"),
@@ -117,13 +132,13 @@ def main() -> None:
             "--category",
             str(experiment["category"]),
             "--work-dir",
-            str(repository / "results" / "raw" / "runtime_accuracy" / experiment_id),
+            str(work_dir),
             "--output-csv",
             str(args.runtime_accuracy_csv.resolve()),
             "--predictions-csv",
-            str(repository / "results" / "csv" / f"{experiment_id}_predictions.csv"),
+            str(predictions),
             "--manifest",
-            str(repository / "results" / "metadata" / f"{experiment_id}_accuracy.json"),
+            str(accuracy_manifest),
         ]
         benchmark_command = [
             "bash",
@@ -134,9 +149,18 @@ def main() -> None:
             str(args.independent_runs),
         ]
         commands.extend((accuracy_command, benchmark_command))
-        run(accuracy_command, args.dry_run)
-        run(benchmark_command, args.dry_run)
-        summary = repository / "results" / "processed" / f"{experiment_id}_run_summary.csv"
+        state = completed_output_state((work_dir, predictions, accuracy_manifest, summary))
+        if args.resume and state == "complete":
+            print(f"resume_skip={experiment_id}", flush=True)
+            skipped_experiments.append(experiment_id)
+        elif args.resume and state == "partial":
+            raise RuntimeError(
+                f"Cannot resume partial experiment {experiment_id}; inspect its work, prediction, "
+                "accuracy-manifest, and run-summary outputs"
+            )
+        else:
+            run(accuracy_command, args.dry_run)
+            run(benchmark_command, args.dry_run)
         for group in experiment["groups"]:
             summaries_by_group.setdefault(str(group), []).append(summary)
 
@@ -165,6 +189,8 @@ def main() -> None:
         "schema_version": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dry_run": args.dry_run,
+        "resume": args.resume,
+        "skipped_experiments": skipped_experiments,
         "git_commit": git_commit,
         "git_dirty": bool(git_status),
         "plan": {"path": str(args.plan.resolve()), "sha256": sha256(args.plan)},

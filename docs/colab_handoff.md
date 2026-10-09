@@ -187,3 +187,6 @@ python3 jetson/scripts/run_experiment_matrix.py \
 실제 실행 시에는 `--dry-run`을 빼고 새로운 manifest 이름을 사용합니다. 각
 configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측정 3회를
 수행하며, 마지막에 `results/processed/coreset_results.csv`를 생성합니다.
+긴 실행이 완전한 configuration 사이에서 중단됐다면 새 manifest 경로와
+`--resume`을 사용합니다. 일부 출력만 존재하는 configuration은 자동으로
+건너뛰지 않으며, 오염 방지를 위해 먼저 점검하도록 중단됩니다.

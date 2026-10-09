@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "experiments": [
+    {
+      "experiment_id": "paper-bottle-fp32-s5",
+      "groups": ["precision"],
+      "config": "configs/jetson_fp32_cuda_tiled_async_transpose_s5.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-fp16-s5",
+      "groups": ["precision"],
+      "config": "configs/jetson_fp16_cuda_tiled_async_transpose_s5.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-int8-s5",
+      "groups": ["precision"],
+      "config": "configs/jetson_int8_cuda_tiled_async_transpose_s5.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    }
+  ]
+}
