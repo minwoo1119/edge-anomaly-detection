@@ -82,10 +82,10 @@ void testCpuCudaAgreement() {
     }
 }
 
-void testWarpCudaSearch(bool tiled = false, bool cacheQuery = false, bool doubleBuffer = false, std::size_t dimensions = 65) {
+void testWarpCudaSearch(bool tiled = false, bool cacheQuery = false, bool doubleBuffer = false, std::size_t dimensions = 65, bool transpose = false) {
     // Tail dimensions, partial bank traversal, ties across warps, and NCHW input.
     constexpr std::size_t rows = 17;
-    constexpr std::size_t count = 11;
+    constexpr std::size_t count = 35;
     std::vector<float> values(rows * dimensions);
     for (std::size_t r = 0; r < rows; ++r)
         for (std::size_t d = 0; d < dimensions; ++d)
@@ -100,7 +100,7 @@ void testWarpCudaSearch(bool tiled = false, bool cacheQuery = false, bool double
         }
     const CpuBruteForceSearch cpu;
     const auto expected = cpu.search(queries.data(), count, dimensions, bank);
-    const CudaBruteForceSearch optimized(bank, count, true, tiled, cacheQuery, doubleBuffer);
+    const CudaBruteForceSearch optimized(bank, count, true, tiled, cacheQuery, doubleBuffer, transpose);
     const auto actual = optimized.search(queries.data(), count, dimensions, bank);
     require(actual.indices == expected.indices, "Warp CUDA nearest indices differ");
     require(actual.indices[0] == 0, "Warp CUDA must select lowest tied index");
@@ -110,6 +110,17 @@ void testWarpCudaSearch(bool tiled = false, bool cacheQuery = false, bool double
     const auto resident = optimized.searchDeviceNchw(
         static_cast<const float*>(device.data()), dimensions, 1, count, bank);
     require(resident.nearest.indices == expected.indices, "Warp NCHW indices differ");
+    const auto repeated = optimized.searchDeviceNchw(
+        static_cast<const float*>(device.data()), dimensions, 1, count, bank);
+    require(repeated.nearest.indices == resident.nearest.indices
+            && repeated.nearest.distances == resident.nearest.distances,
+            "Repeated NCHW search must restore reused transpose buffers");
+    const auto maxQuery = static_cast<std::size_t>(std::max_element(
+        resident.nearest.distances.begin(), resident.nearest.distances.end())
+        - resident.nearest.distances.begin());
+    require(std::equal(resident.maximumDistanceQuery.begin(), resident.maximumDistanceQuery.end(),
+                       queries.begin() + maxQuery * dimensions),
+            "Device maximum query gather differs from patch-major source");
     for (std::size_t q = 0; q < count; ++q) {
         require(std::abs(actual.distances[q] - expected.distances[q]) < 1e-5F,
                 "Warp CUDA distance differs");
@@ -212,6 +223,8 @@ int main() {
         testWarpCudaSearch(true, true);
         testWarpCudaSearch(true, false, true);
         testWarpCudaSearch(true, false, true, 64);
+        testWarpCudaSearch(true, false, true, 65, true);
+        testWarpCudaSearch(true, false, true, 64, true);
         testDeviceNchwNearestNeighbor();
         testMemoryBankRejectsNonFiniteValues();
         testPostprocessing();

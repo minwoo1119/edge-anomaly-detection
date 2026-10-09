@@ -295,3 +295,26 @@ python3 jetson/scripts/run_experiment_matrix.py \
 실행 전에는 `--dry-run`으로 command와 group 구성을 확인할 수 있습니다. 실제
 실행은 clean git worktree와 configuration별 최소 3회 independent run을 강제하며,
 각 group의 `<group>_results.csv`까지 자동으로 생성합니다.
+
+
+## Bottle S5 GPU transpose results (2026-10-09)
+
+FP16 extractor, FP32 bank, MAXN_SUPER_ID2. Three runs each use 50 warm-up
+and 200 measured images. Mean total latency: 490.549 ms; NN: 403.916 ms;
+power: 13.512 W; energy: 6628.344 mJ/image. Full bottle test accuracy
+(83 images): image AUROC 1.0, pixel AUROC 0.9854545306151844.
+
+Normal and broken_large outputs match direct S5 exactly. The GPU transpose
+reuses the existing query buffer without additional global allocation and
+uses 4224 bytes shared memory per block. Its latency is included in NN.
+Zero embedding D2H/reshape stages do not exclude NN result transfers.
+
+Joined data: `results/processed/e9-bottle-fp16-async-transpose-s5_results.csv`.
+Configuration, engine and bank hashes are checked when joining accuracy.
+Coreset ratios are compared numerically so 0.10 and 0.1 are equivalent.
+
+Original measurements retain f01eed4 and git_dirty=true provenance. They
+are development measurements; committing later does not change their
+metadata. Reconfigure and rebuild after committing and use a new run ID
+for final clean-build measurements. Historical E6/S0 mean total latency
+was 516.773 ms; the 5.1% reduction is a comparison across separate sessions.

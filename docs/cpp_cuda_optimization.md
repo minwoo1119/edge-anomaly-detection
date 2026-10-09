@@ -306,3 +306,22 @@ Capture
 - toy NN example
 - CPU vs GPU NN
 - anomaly score
+
+
+## S5 device input transpose
+
+`cuda_tiled_async_transpose` converts device NCHW features to patch-major layout
+on the GPU before the existing asynchronous tiled nearest-neighbor search.
+Use `configs/jetson_fp16_cuda_tiled_async_transpose_s5.yaml` (FP32 equivalent
+also provided). The existing direct NCHW backend remains available for comparison.
+The padded 32x32 transpose reuses the persistent query buffer; its cost is
+included in NN latency. It requires 4224 bytes of shared memory per block and
+no additional global buffer. Tests cover dimension/patch tails, repeated calls
+and maximum-distance query extraction.
+
+The 2026-10-09 smoke comparison (3 warm-up, 10 measured) reduced direct S5
+NN mean from 1671.31 to 503.048 ms and total from 1750.48 to 582.857 ms.
+Normal and broken_large outputs match direct S5 exactly. These smoke results
+do not establish superiority over S0/S4; full accuracy evaluation and formal
+three-run benchmarking are still required. Raw measurements and conditions:
+`results/profiling/s5_transpose_smoke/README.md`.

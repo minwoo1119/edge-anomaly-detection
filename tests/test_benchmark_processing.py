@@ -220,6 +220,14 @@ class MergeExperimentResultsTest(unittest.TestCase):
         self.assertEqual(merged[0]["image_auroc"], "0.99")
         self.assertEqual(merged[0]["accuracy_source"], "cpp_tensorrt_runtime")
 
+    def test_coreset_numeric_format_and_mismatch(self) -> None:
+        accuracy = self.accuracy()
+        accuracy["coreset_ratio"] = "0.10"
+        self.assertEqual(len(merge_experiment_results.merge_rows([self.benchmark()], [accuracy])), 1)
+        accuracy["coreset_ratio"] = "0.2"
+        with self.assertRaises(RuntimeError):
+            merge_experiment_results.merge_rows([self.benchmark()], [accuracy])
+
     def test_artifact_mismatch_is_rejected(self) -> None:
         accuracy = self.accuracy()
         accuracy["engine_sha256"] = "different"
@@ -312,7 +320,7 @@ class ApplyThresholdConfigTest(unittest.TestCase):
 
 class SystemConfigGenerationTest(unittest.TestCase):
     def test_cuda_kernel_is_preserved_across_stages(self) -> None:
-        for backend in ("cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_cached", "cuda_tiled_async"):
+        for backend in ("cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_cached", "cuda_tiled_async", "cuda_tiled_async_transpose"):
             for stage in ("S4", "S5", "S6"):
                 with self.subTest(backend=backend, stage=stage):
                     baseline = f"optimization_stage: S0\nnn_backend: {backend}\n"

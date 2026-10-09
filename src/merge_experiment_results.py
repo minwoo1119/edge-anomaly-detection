@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from decimal import Decimal
 from pathlib import Path
 
 
@@ -69,7 +70,9 @@ def merge_rows(
                 f"No C++/TensorRT runtime accuracy row for config_sha256={config_hash}"
             )
         mismatches = [
-            field for field in MATCH_FIELDS if benchmark[field] != accuracy[field]
+            field for field in MATCH_FIELDS
+            if (Decimal(benchmark[field]) != Decimal(accuracy[field])
+                if field == "coreset_ratio" else benchmark[field] != accuracy[field])
         ]
         for field in ("engine_sha256", "memory_bank_sha256"):
             if benchmark[field] != accuracy[field]:

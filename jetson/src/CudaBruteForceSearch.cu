@@ -331,6 +331,26 @@ __global__ void nearestNeighborNchwKernel(
     }
 }
 
+// Convert [channels, patches] to [patches, channels] entirely on the GPU.
+// Padding avoids shared-memory bank conflicts during transposed reads.
+__global__ void nchwToPatchMajorKernel(const float* input, float* output,
+                                      std::size_t patches, std::size_t channels) {
+    __shared__ float tile[32][33];
+    const std::size_t patch = blockIdx.x * 32 + threadIdx.x;
+    const std::size_t channel = blockIdx.y * 32 + threadIdx.y;
+    for (int offset = 0; offset < 32; offset += 8) {
+        if (patch < patches && channel + offset < channels)
+            tile[threadIdx.y + offset][threadIdx.x] = input[(channel + offset) * patches + patch];
+    }
+    __syncthreads();
+    const std::size_t outputChannel = blockIdx.y * 32 + threadIdx.x;
+    const std::size_t outputPatch = blockIdx.x * 32 + threadIdx.y;
+    for (int offset = 0; offset < 32; offset += 8) {
+        if (outputChannel < channels && outputPatch + offset < patches)
+            output[(outputPatch + offset) * channels + outputChannel] = tile[threadIdx.x][threadIdx.y + offset];
+    }
+}
+
 __global__ void gatherNchwPatchKernel(
     const float* nchw,
     std::size_t patchIndex,
@@ -351,8 +371,9 @@ CudaBruteForceSearch::CudaBruteForceSearch(
     bool warpParallel,
     bool tiled,
     bool cacheQuery,
-    bool doubleBuffer
-) : warpParallel_(warpParallel), tiled_(tiled || cacheQuery || doubleBuffer), cacheQuery_(cacheQuery), doubleBuffer_(doubleBuffer), rows_(memoryBank.rows()),
+    bool doubleBuffer,
+    bool transposeDeviceInput
+) : warpParallel_(warpParallel), tiled_(tiled || cacheQuery || doubleBuffer || transposeDeviceInput), cacheQuery_(cacheQuery), doubleBuffer_(doubleBuffer || transposeDeviceInput), transposeDeviceInput_(transposeDeviceInput), rows_(memoryBank.rows()),
     dimensions_(memoryBank.dimensions()),
     maximumQueries_(maximumQueries),
     bankBuffer_(memoryBank.sizeBytes()),
@@ -502,7 +523,18 @@ CudaBruteForceSearch::DeviceNchwResult CudaBruteForceSearch::searchDeviceNchw(
     }
 
     searchStart_.record(stream_.get());
-    if (doubleBuffer_) {
+    if (transposeDeviceInput_) {
+        nchwToPatchMajorKernel<<<dim3(static_cast<unsigned int>((queryCount + 31) / 32),
+                                     static_cast<unsigned int>((dimensions_ + 31) / 32)),
+                                dim3(32, 8), 0, stream_.get()>>>(
+            deviceNchw, static_cast<float*>(queryBuffer_.data()), queryCount, dimensions_);
+        checkCuda(cudaGetLastError(), "GPU NCHW transpose launch failed");
+        doubleBufferedNearestNeighborKernel<false><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 8 * dimensions_ * sizeof(float), stream_.get()>>>(
+            static_cast<const float*>(queryBuffer_.data()), static_cast<const float*>(bankBuffer_.data()),
+            queryCount, rows_, dimensions_, static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (doubleBuffer_) {
         doubleBufferedNearestNeighborKernel<true><<<static_cast<unsigned int>((queryCount + 7) / 8),
             threadsPerBlock, 8 * dimensions_ * sizeof(float), stream_.get()>>>(
             deviceNchw, static_cast<const float*>(bankBuffer_.data()),
