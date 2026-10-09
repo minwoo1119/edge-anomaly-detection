@@ -15,6 +15,7 @@
 - `cpp_cuda_optimization.md` — C++17 / CUDA / memory / async / NN 최적화 계획
 - `jetson_deployment.md` — Jetson Orin Nano 배포 및 빌드 절차
 - `paper_plan.md` — 논문 가설, 기여점, figure/table 및 섹션 구성
+- `publication_execution_plan.md` — 투고까지의 실험 gate, 완료 조건, 현재 진행 위치
 - `agent_instructions.md` — 개발 에이전트가 따라야 할 규칙
 
 ## 현재 상태

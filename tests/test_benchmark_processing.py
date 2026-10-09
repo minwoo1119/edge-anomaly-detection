@@ -31,6 +31,12 @@ generate_paper_results = load_module(
 run_coreset_ablation = load_module(
     "run_coreset_ablation", ROOT / "src" / "run_coreset_ablation.py"
 )
+prepare_colab_bundle = load_module(
+    "prepare_colab_bundle", ROOT / "jetson" / "scripts" / "prepare_colab_bundle.py"
+)
+generate_coreset_plan = load_module(
+    "generate_coreset_experiment_plan", ROOT / "src" / "generate_coreset_experiment_plan.py"
+)
 generate_system_configs = load_module(
     "generate_system_configs", ROOT / "src" / "generate_system_configs.py"
 )
@@ -257,6 +263,19 @@ class CoresetAblationTest(unittest.TestCase):
     def test_ratio_tags_are_stable(self) -> None:
         self.assertEqual(
             [run_coreset_ablation.ratio_tag(value) for value in (0.01, 0.025, 0.05, 0.1, 0.2)],
+            ["c001", "c0025", "c005", "c01", "c02"],
+        )
+
+    def test_jetson_ratio_tags_match_colab_tags(self) -> None:
+        for ratio in (0.01, 0.025, 0.05, 0.1, 0.2):
+            self.assertEqual(
+                prepare_colab_bundle.ratio_tag(ratio),
+                run_coreset_ablation.ratio_tag(ratio),
+            )
+
+    def test_coreset_plan_ratio_tags_are_stable(self) -> None:
+        self.assertEqual(
+            [generate_coreset_plan.ratio_tag(value) for value in generate_coreset_plan.EXPECTED_RATIOS],
             ["c001", "c0025", "c005", "c01", "c02"],
         )
 

@@ -155,3 +155,32 @@ python src/run_coreset_ablation.py \
 각 ratio는 독립 checkpoint, training manifest, ONNX, memory bank, export manifest,
 calibration/reference 및 bundle을 갖습니다. 이후 Jetson config의 `coreset_ratio`와
 `memory_bank_path`는 반드시 같은 variant를 가리켜야 합니다.
+
+생성된 `c001`, `c0025`, `c005`, `c01`, `c02` 디렉터리를 구조를 유지한 채
+Jetson의 `outputs/transfers/coreset_bottle`로 복사합니다. Jetson에서는 다음 한
+명령으로 다섯 bundle을 검증·압축 해제하고, 각 ONNX에서 FP16 engine을 빌드하고,
+최종 CUDA backend 설정과 experiment matrix를 생성합니다.
+
+```bash
+python3 jetson/scripts/prepare_coreset_ablation.py \
+  --bundle-root outputs/transfers/coreset_bottle \
+  --category bottle \
+  --artifact-root artifacts/coreset \
+  --config-dir results/configs/paper_coreset_bottle \
+  --plan-output results/plans/paper_coreset_bottle.json \
+  --benchmark-image datasets/MVTecAD/bottle/test/good/000.png
+```
+
+준비가 끝나면 생성된 계획을 먼저 검토합니다.
+
+```bash
+python3 jetson/scripts/run_experiment_matrix.py \
+  --plan results/plans/paper_coreset_bottle.json \
+  --dataset-root datasets/MVTecAD \
+  --manifest results/metadata/paper_coreset_bottle_dry_run.json \
+  --dry-run
+```
+
+실제 실행 시에는 `--dry-run`을 빼고 새로운 manifest 이름을 사용합니다. 각
+configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측정 3회를
+수행하며, 마지막에 `results/processed/coreset_results.csv`를 생성합니다.

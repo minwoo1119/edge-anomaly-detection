@@ -23,6 +23,7 @@ outputs/
 jetson/build/
 results/
 models_before_colab_*/
+artifacts/
 
 # TensorRT / ONNX
 *.engine
