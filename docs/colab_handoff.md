@@ -190,3 +190,16 @@ configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측�
 긴 실행이 완전한 configuration 사이에서 중단됐다면 새 manifest 경로와
 `--resume`을 사용합니다. 일부 출력만 존재하는 configuration은 자동으로
 건너뛰지 않으며, 오염 방지를 위해 먼저 점검하도록 중단됩니다.
+
+## 15-category publication artifacts
+
+`notebooks/run_multicategory_publication.ipynb`은 MVTec AD 15개 category를 seed
+42, 10% coreset으로 각각 학습하고, category별 검증된 bundle을 Drive의
+`edge-anomaly-output/mvtec15_seed42_c01/<category>/`에 저장합니다. Colab 세션
+제한을 고려해 `CATEGORIES_TO_RUN`을 3–5개씩 나눌 수 있으며,
+`COMPLETE.json`이 존재하는 category는 재실행 시 건너뜁니다.
+
+각 category bundle은 독립 checkpoint, training/export/evaluation manifest,
+ONNX, memory bank, train-normal INT8 calibration 입력과 correctness reference를
+포함합니다. 15개 `COMPLETE.json`이 모두 생기기 전에는 multi-category 결과가
+완료된 것으로 간주하지 않습니다.
