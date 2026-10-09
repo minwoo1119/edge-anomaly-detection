@@ -17,7 +17,7 @@ constexpr int threadsPerBlock = 256;
 
 // Eight query warps reuse four full bank rows staged by the whole block.
 // Invalid tail queries still participate in every block barrier.
-template<bool nchwLayout>
+template<bool nchwLayout, bool cacheQuery = false>
 __global__ void tiledNearestNeighborKernel(
     const float* queries, const float* bank, std::size_t queryCount,
     std::size_t bankRows, std::size_t dimensions,
@@ -28,6 +28,17 @@ __global__ void tiledNearestNeighborKernel(
     const int lane = threadIdx.x % 32;
     const std::size_t q = blockIdx.x * queryTile + threadIdx.x / 32;
     extern __shared__ float bankCache[];
+    float* queryCache = bankCache + bankTile * dimensions;
+    if (cacheQuery) {
+        for (std::size_t i = threadIdx.x; i < queryTile * dimensions; i += blockDim.x) {
+            const std::size_t cachedQ = blockIdx.x * queryTile + i / dimensions;
+            const std::size_t d = i % dimensions;
+            queryCache[i] = cachedQ < queryCount
+                ? (nchwLayout ? queries[d * queryCount + cachedQ]
+                              : queries[cachedQ * dimensions + d]) : 0.0F;
+        }
+        __syncthreads();
+    }
     float best = CUDART_INF_F;
     unsigned long long bestIndex = 0;
     for (std::size_t base = 0; base < bankRows; base += bankTile) {
@@ -39,8 +50,10 @@ __global__ void tiledNearestNeighborKernel(
         float squared[bankTile] = {0.0F, 0.0F, 0.0F, 0.0F};
         if (q < queryCount) {
             for (std::size_t d = lane; d < dimensions; d += 32) {
-                const float value = nchwLayout ? queries[d * queryCount + q]
-                                              : queries[q * dimensions + d];
+                const float value = cacheQuery
+                    ? queryCache[(threadIdx.x / 32) * dimensions + d]
+                    : (nchwLayout ? queries[d * queryCount + q]
+                                  : queries[q * dimensions + d]);
                 #pragma unroll
                 for (int r = 0; r < bankTile; ++r) {
                     if (r < rows) {
@@ -61,6 +74,97 @@ __global__ void tiledNearestNeighborKernel(
             }
         }
         __syncthreads();
+    }
+    if (q < queryCount && lane == 0) {
+        outputDistances[q] = sqrtf(best);
+        outputIndices[q] = bestIndex;
+    }
+}
+
+// Ampere asynchronous global-to-shared copies. Odd feature dimensions use
+// the bounded synchronous fallback so test and generic input shapes stay valid.
+__device__ void stageBankTile(float* destination, const float* source,
+                              std::size_t rows, std::size_t dimensions) {
+#if __CUDA_ARCH__ >= 800
+    if (dimensions % 4 == 0) {
+        for (std::size_t i = threadIdx.x * 4; i < rows * dimensions; i += blockDim.x * 4) {
+            const unsigned int address = static_cast<unsigned int>(__cvta_generic_to_shared(destination + i));
+            asm volatile("cp.async.ca.shared.global [%0], [%1], 16;" ::
+                         "r"(address), "l"(source + i) : "memory");
+        }
+    } else
+#endif
+    {
+        for (std::size_t i = threadIdx.x; i < rows * dimensions; i += blockDim.x)
+            destination[i] = source[i];
+    }
+#if __CUDA_ARCH__ >= 800
+    asm volatile("cp.async.commit_group;" ::: "memory");
+#endif
+}
+
+__device__ void finishBankTile() {
+#if __CUDA_ARCH__ >= 800
+    asm volatile("cp.async.wait_group 0;" ::: "memory");
+#endif
+}
+
+// Eight query warps reuse four full bank rows staged by the whole block.
+// Invalid tail queries still participate in every block barrier.
+template<bool nchwLayout>
+__global__ void doubleBufferedNearestNeighborKernel(
+    const float* queries, const float* bank, std::size_t queryCount,
+    std::size_t bankRows, std::size_t dimensions,
+    float* outputDistances, unsigned long long* outputIndices
+) {
+    constexpr int bankTile = 4;
+    constexpr int queryTile = threadsPerBlock / 32;
+    const int lane = threadIdx.x % 32;
+    const std::size_t q = blockIdx.x * queryTile + threadIdx.x / 32;
+    extern __shared__ float bankCache[];
+    int current = 0;
+    stageBankTile(bankCache, bank, min(bankRows, std::size_t(4)), dimensions);
+    finishBankTile();
+    __syncthreads();
+    float best = CUDART_INF_F;
+    unsigned long long bestIndex = 0;
+    for (std::size_t base = 0; base < bankRows; base += bankTile) {
+        const int rows = static_cast<int>(min(static_cast<unsigned long long>(bankTile),
+                                            static_cast<unsigned long long>(bankRows - base)));
+        const std::size_t nextBase = base + bankTile;
+        float* currentBank = bankCache + current * bankTile * dimensions;
+        if (nextBase < bankRows) {
+            const std::size_t nextRows = min(bankRows - nextBase, std::size_t(4));
+            stageBankTile(bankCache + (1 - current) * bankTile * dimensions,
+                          bank + nextBase * dimensions, nextRows, dimensions);
+        }
+        float squared[bankTile] = {0.0F, 0.0F, 0.0F, 0.0F};
+        if (q < queryCount) {
+            for (std::size_t d = lane; d < dimensions; d += 32) {
+                const float value = nchwLayout ? queries[d * queryCount + q]
+                                              : queries[q * dimensions + d];
+                #pragma unroll
+                for (int r = 0; r < bankTile; ++r) {
+                    if (r < rows) {
+                        const float difference = value - currentBank[r * dimensions + d];
+                        squared[r] = fmaf(difference, difference, squared[r]);
+                    }
+                }
+            }
+        }
+        #pragma unroll
+        for (int r = 0; r < bankTile; ++r) {
+            for (int offset = 16; offset > 0; offset /= 2)
+                squared[r] += __shfl_down_sync(0xffffffffU, squared[r], offset);
+            if (q < queryCount && lane == 0 && r < rows
+                && (squared[r] < best || (squared[r] == best && base + r < bestIndex))) {
+                best = squared[r];
+                bestIndex = base + r;
+            }
+        }
+        finishBankTile();
+        __syncthreads();
+        current = 1 - current;
     }
     if (q < queryCount && lane == 0) {
         outputDistances[q] = sqrtf(best);
@@ -245,8 +349,10 @@ CudaBruteForceSearch::CudaBruteForceSearch(
     const MemoryBank& memoryBank,
     std::size_t maximumQueries,
     bool warpParallel,
-    bool tiled
-) : warpParallel_(warpParallel), tiled_(tiled), rows_(memoryBank.rows()),
+    bool tiled,
+    bool cacheQuery,
+    bool doubleBuffer
+) : warpParallel_(warpParallel), tiled_(tiled || cacheQuery || doubleBuffer), cacheQuery_(cacheQuery), doubleBuffer_(doubleBuffer), rows_(memoryBank.rows()),
     dimensions_(memoryBank.dimensions()),
     maximumQueries_(maximumQueries),
     bankBuffer_(memoryBank.sizeBytes()),
@@ -260,10 +366,24 @@ CudaBruteForceSearch::CudaBruteForceSearch(
         int device = 0;
         int sharedLimit = 0;
         checkCuda(cudaGetDevice(&device), "CUDA NN device query failed");
-        checkCuda(cudaDeviceGetAttribute(&sharedLimit, cudaDevAttrMaxSharedMemoryPerBlock, device),
+        checkCuda(cudaDeviceGetAttribute(&sharedLimit, (cacheQuery_ || doubleBuffer_) ? cudaDevAttrMaxSharedMemoryPerBlockOptin : cudaDevAttrMaxSharedMemoryPerBlock, device),
                   "CUDA NN shared-memory limit query failed");
-        if (dimensions_ > static_cast<std::size_t>(sharedLimit) / (4 * sizeof(float)))
-            throw std::invalid_argument("CUDA tiled bank rows exceed shared-memory capacity.");
+        if (dimensions_ > static_cast<std::size_t>(sharedLimit) / ((cacheQuery_ ? 12 : (doubleBuffer_ ? 8 : 4)) * sizeof(float)))
+            throw std::invalid_argument("CUDA tiled data exceeds shared-memory capacity.");
+        if (doubleBuffer_) {
+            const int bytes = static_cast<int>(8 * dimensions_ * sizeof(float));
+            checkCuda(cudaFuncSetAttribute(doubleBufferedNearestNeighborKernel<false>,
+                cudaFuncAttributeMaxDynamicSharedMemorySize, bytes), "Double buffer shared-memory opt-in failed");
+            checkCuda(cudaFuncSetAttribute(doubleBufferedNearestNeighborKernel<true>,
+                cudaFuncAttributeMaxDynamicSharedMemorySize, bytes), "Double buffer NCHW opt-in failed");
+        }
+        if (cacheQuery_) {
+            const int bytes = static_cast<int>(12 * dimensions_ * sizeof(float));
+            checkCuda(cudaFuncSetAttribute(tiledNearestNeighborKernel<false, true>,
+                cudaFuncAttributeMaxDynamicSharedMemorySize, bytes), "Cached kernel shared-memory opt-in failed");
+            checkCuda(cudaFuncSetAttribute(tiledNearestNeighborKernel<true, true>,
+                cudaFuncAttributeMaxDynamicSharedMemorySize, bytes), "Cached NCHW shared-memory opt-in failed");
+        }
     }
     checkCuda(
         cudaMemcpyAsync(
@@ -297,7 +417,19 @@ SearchResult CudaBruteForceSearch::search(
         ),
         "CUDA NN query H2D copy failed"
     );
-    if (tiled_) {
+    if (doubleBuffer_) {
+        doubleBufferedNearestNeighborKernel<false><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 8 * dimensions_ * sizeof(float), stream_.get()>>>(
+            static_cast<const float*>(queryBuffer_.data()), static_cast<const float*>(bankBuffer_.data()),
+            queryCount, rows_, dimensions_, static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (cacheQuery_) {
+        tiledNearestNeighborKernel<false, true><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 12 * dimensions_ * sizeof(float), stream_.get()>>>(
+            static_cast<const float*>(queryBuffer_.data()), static_cast<const float*>(bankBuffer_.data()),
+            queryCount, rows_, dimensions_, static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (tiled_) {
         tiledNearestNeighborKernel<false><<<static_cast<unsigned int>((queryCount + 7) / 8),
             threadsPerBlock, 4 * dimensions_ * sizeof(float), stream_.get()>>>(
             static_cast<const float*>(queryBuffer_.data()),
@@ -370,7 +502,19 @@ CudaBruteForceSearch::DeviceNchwResult CudaBruteForceSearch::searchDeviceNchw(
     }
 
     searchStart_.record(stream_.get());
-    if (tiled_) {
+    if (doubleBuffer_) {
+        doubleBufferedNearestNeighborKernel<true><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 8 * dimensions_ * sizeof(float), stream_.get()>>>(
+            deviceNchw, static_cast<const float*>(bankBuffer_.data()),
+            queryCount, rows_, dimensions_, static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (cacheQuery_) {
+        tiledNearestNeighborKernel<true, true><<<static_cast<unsigned int>((queryCount + 7) / 8),
+            threadsPerBlock, 12 * dimensions_ * sizeof(float), stream_.get()>>>(
+            deviceNchw, static_cast<const float*>(bankBuffer_.data()),
+            queryCount, rows_, dimensions_, static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else if (tiled_) {
         tiledNearestNeighborKernel<true><<<static_cast<unsigned int>((queryCount + 7) / 8),
             threadsPerBlock, 4 * dimensions_ * sizeof(float), stream_.get()>>>(
             deviceNchw, static_cast<const float*>(bankBuffer_.data()), queryCount, rows_, dimensions_,

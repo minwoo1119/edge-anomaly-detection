@@ -173,6 +173,46 @@ power도 함께 측정.
 
 ## 9. CUDA NN
 
+Full FP16 bottle evaluation for `cuda_tiled_async` measured Image AUROC 1.0
+and Pixel AUROC 0.985454531. Three independent runs of
+`e6-bottle-fp16-cuda-tiled-async` averaged 416.590 ms NN time, 516.773 ms total
+latency, 13.460 W, and 6.958 J/image. These fixed-image runs recorded uncommitted
+source on top of `1a9ca6e`; retain their original manifests and power logs.
+Relative to the tiled experiment, measured mean latency decreased about 19%
+and energy/image about 30%. Comparisons across runs do not imply clock control.
+
+For subsequent S4/S5 comparisons, config generation preserves an existing CUDA
+backend (including `cuda_tiled_async`). CPU/OpenMP baselines switch to `cuda`
+only at S5/S6. This keeps kernel selection fixed during system ablations.
+
+Experimental `nn_backend: cuda_tiled_async` alternates two four-row bank
+buffers. On SM80+ and dimensions divisible by four, aligned 16-byte
+`cp.async` copies prefetch the next bank tile before the current tile's distance
+calculation. Per-thread async waits and a block barrier complete each stage
+before swapping buffers. Odd dimensions and older compiled architectures use
+bounded synchronous copies; tail queries always participate in barriers.
+At 1536 dimensions the two buffers require 48 KiB dynamic shared memory, with
+device capacity checks and explicit opt-in. Existing backends remain unchanged.
+Unit tests cover both odd dimensions and the async aligned path, bank/query
+tails, cross-warp ties, and device NCHW. FP32 normal/anomalous outputs matched
+the tiled baseline exactly. Performance and full FP16 AUROC remain separate
+validation steps; more shared memory can reduce occupancy.
+
+Experimental `nn_backend: cuda_tiled_cached` also caches eight query vectors in
+shared memory, alongside four bank rows. At 1536 dimensions it requires 72 KiB
+dynamic shared memory and explicitly opts into the device's larger shared-memory
+limit. Both layouts and partial query tiles are supported; existing backends
+are unchanged. FP32 normal/anomalous image dumps matched `cuda_tiled` exactly,
+and GPU unit tests passed.
+
+A preliminary comparison (3 warm-up, 10 measured frames, one run per backend)
+measured NN means of 589.890 ms for tiled and 1331.05 ms for cached. This does
+not establish controlled performance or energy rankings: it lacks independent
+runs, sustained warm-up, and clock control. Increased shared-memory residency
+may reduce occupancy; this mechanism has not been measured for the cached
+kernel. Keep `cuda_tiled` as the measured speed baseline; the cached configs
+are experimental and should not be promoted based on correctness alone.
+
 `nn_backend: cuda_tiled` preserves the warp baseline as a separate backend and
 stages four bank rows in shared memory for reuse by eight query warps per block.
 One warp computes one query's distances, using direct squared differences and

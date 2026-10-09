@@ -311,6 +311,14 @@ class ApplyThresholdConfigTest(unittest.TestCase):
 
 
 class SystemConfigGenerationTest(unittest.TestCase):
+    def test_cuda_kernel_is_preserved_across_stages(self) -> None:
+        for backend in ("cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_cached", "cuda_tiled_async"):
+            for stage in ("S4", "S5", "S6"):
+                with self.subTest(backend=backend, stage=stage):
+                    baseline = f"optimization_stage: S0\nnn_backend: {backend}\n"
+                    generated = generate_system_configs.with_stage(baseline, stage)
+                    self.assertIn(f"nn_backend: {backend}\n", generated)
+
     def test_stage_replacement(self) -> None:
         baseline = "precision: fp32\noptimization_stage: S0\nnn_backend: cpu\n"
         generated = generate_system_configs.with_stage(baseline, "S3")

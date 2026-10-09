@@ -38,7 +38,11 @@ def with_stage(config_text: str, stage: str) -> str:
         backend_prefix = lines[backend_matches[0]][
             : len(lines[backend_matches[0]]) - len(lines[backend_matches[0]].lstrip())
         ]
-        lines[backend_matches[0]] = f"{backend_prefix}nn_backend: cuda"
+        backend = lines[backend_matches[0]].split(":", 1)[1].split("#", 1)[0].strip()
+        cuda_backends = {"cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_cached", "cuda_tiled_async"}
+        # Preserve the selected kernel during system-stage comparisons.
+        selected = backend if backend in cuda_backends else "cuda"
+        lines[backend_matches[0]] = f"{backend_prefix}nn_backend: {selected}"
     return "\n".join(lines) + "\n"
 
 
