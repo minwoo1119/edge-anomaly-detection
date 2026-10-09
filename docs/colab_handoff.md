@@ -141,6 +141,9 @@ python src/verify_artifact_bundle.py \
 
 ## Coreset ablation artifacts
 
+전용 노트북 `notebooks/run_coreset_ablation.ipynb`을 Colab GPU에서 위에서 아래로
+실행하면 아래 명령과 bundle 검증·Drive 복사를 한 흐름으로 수행합니다.
+
 1%, 2.5%, 5%, 10%, 20% coreset은 동일 memory bank 파일의 metadata만 바꾸지
 않고 각각 train-normal에서 다시 생성합니다.
 
