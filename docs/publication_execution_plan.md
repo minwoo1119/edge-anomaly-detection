@@ -33,7 +33,7 @@ Do not derive smaller banks by truncating the 10% bank. For every ratio:
 Exit criterion: five hash-joined configurations in `coreset_results.csv`, with
 Table 3 and Figure 5 generated without `--allow-incomplete`.
 
-## Gate 3 — Precision and bank storage (precision complete; bank storage pending)
+## Gate 3 — Precision and bank storage (complete)
 
 On the fixed 10% bottle artifacts and final NN backend, compare FP32, FP16 and
 INT8 feature engines. INT8 calibration uses train-normal images only. Separately
@@ -48,14 +48,16 @@ both reached image AUROC 1.0 and pixel AUROC 0.985461/0.985455. Entropy-calibrat
 INT8 fell to image AUROC 0.688889 and pixel AUROC 0.761489, while end-to-end
 latency improved only from 550.245 ms (FP16) to 523.076 ms because exact NN
 search remained dominant. The INT8 path is therefore retained as a negative
-result and is not a deployment candidate. The FP32/FP16 bank-storage comparison
-remains before this gate is closed.
+result and is not a deployment candidate. FP16 bank serialization preserved
+image/pixel AUROC 1.0/0.985455 and halved the artifact payload, but the loader
+restores it to FP32; measured runtime bank memory therefore remained 125.396 MB
+for both formats. This is reported as a storage-only result.
 
 After building the INT8 engine, the controlled S5 precision plan is
 `configs/paper_precision_matrix.json`. Run it with a dedicated accuracy CSV so
 earlier development evaluations cannot collide with final publication records.
 
-## Gate 4 — Retrieval and system ablation
+## Gate 4 — Retrieval and system ablation (system complete; retrieval pending)
 
 Use one fixed artifact chain. Compare CPU brute force, the direct CUDA baseline,
 warp, tiled, asynchronous tiled, and transpose-assisted asynchronous tiled
@@ -65,6 +67,14 @@ not evidence of an ablation.
 
 Exit criterion: same accuracy artifacts and fixed experimental conditions, with
 three runs per configuration and a clear contribution table.
+
+The controlled S0–S6 system matrix completed at commit `09f6523`. Every stage
+preserved image/pixel AUROC 1.0/0.985455. S2 pinned staging produced the largest
+single-frame reduction in the pre-S5 path (547.476 ms at S1 to 502.427 ms at
+S2). S6 reached a 482.350 ms steady-state interval and 6.426 J/image. Its
+964.625 ms single-frame completion time is reported separately. The isolated
+CPU/direct-CUDA/warp/tiled/async/transpose retrieval comparison remains before
+this gate is closed.
 
 ## Gate 5 — Multi-category generality
 

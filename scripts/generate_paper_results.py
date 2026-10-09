@@ -25,6 +25,8 @@ METRICS = (
     "post_mean",
     "total_mean",
     "total_p95",
+    "pipeline_interval_mean",
+    "pipeline_interval_p95",
     "fps_mean",
     "bank_size_mb",
     "engine_size_mb",
@@ -275,7 +277,10 @@ def pareto(points: list[tuple[str, float, float]]) -> set[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    for name in ("baseline", "precision", "coreset", "nn_backend", "system", "multi_category"):
+    for name in (
+        "baseline", "precision", "bank_storage", "coreset", "nn_backend", "system",
+        "multi_category",
+    ):
         parser.add_argument(f"--{name.replace('_', '-')}", type=Path)
     parser.add_argument("--output-root", type=Path, default=Path("results"))
     parser.add_argument("--allow-incomplete", action="store_true")
@@ -283,7 +288,10 @@ def main() -> None:
 
     inputs = {
         name: getattr(args, name)
-        for name in ("baseline", "precision", "coreset", "nn_backend", "system", "multi_category")
+        for name in (
+            "baseline", "precision", "bank_storage", "coreset", "nn_backend", "system",
+            "multi_category",
+        )
         if getattr(args, name) is not None
     }
     if not inputs:
@@ -352,11 +360,12 @@ def main() -> None:
 
     analyses = (
         ("precision", "precision", {"fp32", "fp16", "int8"}, ("category", "coreset_ratio", "bank_precision", "nn_backend", "optimization_stage", "power_mode")),
+        ("bank_storage", "bank_precision", {"fp32", "fp16"}, ("category", "precision", "coreset_ratio", "nn_backend", "optimization_stage", "power_mode")),
         ("coreset", "coreset_ratio", {"0.01", "0.025", "0.05", "0.1", "0.10", "0.2", "0.20"}, ("category", "precision", "bank_precision", "nn_backend", "optimization_stage", "power_mode")),
         ("nn_backend", "nn_backend", {"cpu", "cuda"}, ("category", "precision", "coreset_ratio", "bank_precision", "optimization_stage", "power_mode")),
         ("system", "optimization_stage", {f"S{index}" for index in range(7)}, ("category", "precision", "coreset_ratio", "bank_precision", "power_mode")),
     )
-    table_numbers = {"precision": 2, "coreset": 3, "nn_backend": 4, "system": 6}
+    table_numbers = {"precision": 2, "bank_storage": "2b", "coreset": 3, "nn_backend": 4, "system": 6}
     for name, key, expected, fixed in analyses:
         if name not in rows_by_name:
             continue
@@ -381,7 +390,10 @@ def main() -> None:
         write_csv(tables / f"table_{table_numbers[name]}_{name}.csv", aggregated)
         write_markdown(tables / f"table_{table_numbers[name]}_{name}.md", aggregated)
         for row in aggregated:
-            pareto_points.append((f"{name}:{row[key]}", float(row["total_mean"]), float(row["image_auroc"])))
+            latency_field = "pipeline_interval_mean" if name == "system" else "total_mean"
+            pareto_points.append(
+                (f"{name}:{row[key]}", float(row[latency_field]), float(row["image_auroc"]))
+            )
 
         labels = [str(row[key]) for row in aggregated]
         if name == "precision":
@@ -433,10 +445,10 @@ def main() -> None:
         elif name == "system":
             bar_svg(
                 figures / "figure_7_system_optimization.svg",
-                "System Optimization Ablation",
+                "System Optimization Steady-State Interval",
                 labels,
-                [("Total latency", [float(row["total_mean"]) for row in aggregated])],
-                "Latency (ms)",
+                [("Pipeline interval", [float(row["pipeline_interval_mean"]) for row in aggregated])],
+                "Interval (ms/image)",
             )
 
     if "multi_category" in rows_by_name:
