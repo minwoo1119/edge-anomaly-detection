@@ -15,6 +15,59 @@
 namespace {
 constexpr int threadsPerBlock = 256;
 
+// One warp cooperates on a bank row: adjacent lanes read adjacent dimensions.
+// Cache the query once per block, including for device-resident NCHW inputs.
+template<bool nchwLayout>
+__global__ void warpNearestNeighborKernel(
+    const float* queries, const float* bank, std::size_t queryCount,
+    std::size_t bankRows, std::size_t dimensions,
+    float* outputDistances, unsigned long long* outputIndices
+) {
+    const std::size_t queryIndex = blockIdx.x;
+    if (queryIndex >= queryCount) return;
+    extern __shared__ float query[];
+    for (std::size_t d = threadIdx.x; d < dimensions; d += blockDim.x)
+        query[d] = nchwLayout ? queries[d * queryCount + queryIndex]
+                             : queries[queryIndex * dimensions + d];
+    __syncthreads();
+    const int lane = threadIdx.x % 32;
+    const int warp = threadIdx.x / 32;
+    constexpr int warpCount = threadsPerBlock / 32;
+    float best = CUDART_INF_F;
+    unsigned long long bestIndex = 0;
+    for (std::size_t row = warp; row < bankRows; row += warpCount) {
+        float squared = 0.0F;
+        for (std::size_t d = lane; d < dimensions; d += 32) {
+            const float difference = query[d] - bank[row * dimensions + d];
+            squared = fmaf(difference, difference, squared);
+        }
+        for (int offset = 16; offset > 0; offset /= 2)
+            squared += __shfl_down_sync(0xffffffffU, squared, offset);
+        if (lane == 0 && (squared < best || (squared == best && row < bestIndex))) {
+            best = squared;
+            bestIndex = row;
+        }
+    }
+    __shared__ float warpDistances[warpCount];
+    __shared__ unsigned long long warpIndices[warpCount];
+    if (lane == 0) {
+        warpDistances[warp] = best;
+        warpIndices[warp] = bestIndex;
+    }
+    __syncthreads();
+    if (threadIdx.x == 0) {
+        for (int w = 1; w < warpCount; ++w) {
+            if (warpDistances[w] < best
+                || (warpDistances[w] == best && warpIndices[w] < bestIndex)) {
+                best = warpDistances[w];
+                bestIndex = warpIndices[w];
+            }
+        }
+        outputDistances[queryIndex] = sqrtf(best);
+        outputIndices[queryIndex] = bestIndex;
+    }
+}
+
 __global__ void nearestNeighborKernel(
     const float* queries,
     const float* bank,
@@ -137,8 +190,9 @@ __global__ void gatherNchwPatchKernel(
 
 CudaBruteForceSearch::CudaBruteForceSearch(
     const MemoryBank& memoryBank,
-    std::size_t maximumQueries
-) : rows_(memoryBank.rows()),
+    std::size_t maximumQueries,
+    bool warpParallel
+) : warpParallel_(warpParallel), rows_(memoryBank.rows()),
     dimensions_(memoryBank.dimensions()),
     maximumQueries_(maximumQueries),
     bankBuffer_(memoryBank.sizeBytes()),
@@ -180,6 +234,14 @@ SearchResult CudaBruteForceSearch::search(
         ),
         "CUDA NN query H2D copy failed"
     );
+    if (warpParallel_) {
+        warpNearestNeighborKernel<false><<<static_cast<unsigned int>(queryCount), threadsPerBlock,
+            dimensions_ * sizeof(float), stream_.get()>>>(
+            static_cast<const float*>(queryBuffer_.data()),
+            static_cast<const float*>(bankBuffer_.data()), queryCount, rows_, dimensions_,
+            static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else {
     nearestNeighborKernel<<<static_cast<unsigned int>(queryCount), threadsPerBlock, 0, stream_.get()>>>(
         static_cast<const float*>(queryBuffer_.data()),
         static_cast<const float*>(bankBuffer_.data()),
@@ -189,6 +251,7 @@ SearchResult CudaBruteForceSearch::search(
         static_cast<float*>(distanceBuffer_.data()),
         static_cast<unsigned long long*>(indexBuffer_.data())
     );
+    }
     checkCuda(cudaGetLastError(), "CUDA NN kernel launch failed");
 
     SearchResult result;
@@ -237,6 +300,13 @@ CudaBruteForceSearch::DeviceNchwResult CudaBruteForceSearch::searchDeviceNchw(
     }
 
     searchStart_.record(stream_.get());
+    if (warpParallel_) {
+        warpNearestNeighborKernel<true><<<static_cast<unsigned int>(queryCount), threadsPerBlock,
+            dimensions_ * sizeof(float), stream_.get()>>>(
+            deviceNchw, static_cast<const float*>(bankBuffer_.data()), queryCount, rows_, dimensions_,
+            static_cast<float*>(distanceBuffer_.data()),
+            static_cast<unsigned long long*>(indexBuffer_.data()));
+    } else {
     nearestNeighborNchwKernel<<<static_cast<unsigned int>(queryCount), threadsPerBlock, 0, stream_.get()>>>(
         deviceNchw,
         static_cast<const float*>(bankBuffer_.data()),
@@ -246,6 +316,7 @@ CudaBruteForceSearch::DeviceNchwResult CudaBruteForceSearch::searchDeviceNchw(
         static_cast<float*>(distanceBuffer_.data()),
         static_cast<unsigned long long*>(indexBuffer_.data())
     );
+    }
     checkCuda(cudaGetLastError(), "CUDA device NCHW NN kernel launch failed");
 
     DeviceNchwResult output;

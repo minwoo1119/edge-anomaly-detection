@@ -10,7 +10,8 @@ public:
         std::vector<float> maximumDistanceQuery;
     };
 
-    CudaBruteForceSearch(const MemoryBank& memoryBank, std::size_t maximumQueries);
+    CudaBruteForceSearch(const MemoryBank& memoryBank, std::size_t maximumQueries,
+                        bool warpParallel = false);
 
     SearchResult search(
         const float* queries,
@@ -28,6 +29,7 @@ public:
     ) const;
 
 private:
+    bool warpParallel_{false};
     std::size_t rows_{0};
     std::size_t dimensions_{0};
     std::size_t maximumQueries_{0};

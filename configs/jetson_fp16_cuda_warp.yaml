@@ -1,12 +1,12 @@
-engine_path: models/patchcore_feature_extractor_fp32.engine
+engine_path: models/patchcore_feature_extractor_fp16.engine
 memory_bank_path: models/patchcore_memory_bank.npy
-engine_manifest_path: models/patchcore_feature_extractor_fp32.engine.json
+engine_manifest_path: models/patchcore_feature_extractor_fp16.engine.json
 export_manifest_path: models/patchcore_export_manifest.json
 category: bottle
 model: patchcore_wide_resnet50_2
-precision: fp32
+precision: fp16
 bank_precision: fp32
-nn_backend: cuda
+nn_backend: cuda_warp
 optimization_stage: S0
 device: jetson_orin_nano
 jetpack: 6.2.1

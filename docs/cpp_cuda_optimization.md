@@ -173,6 +173,26 @@ power도 함께 측정.
 
 ## 9. CUDA NN
 
+`nn_backend: cuda` preserves the original thread-per-bank-row baseline.
+`nn_backend: cuda_warp` uses one warp per bank row, divides dimensions across
+32 lanes, reduces partial squared distances with warp shuffles, and caches the
+query in shared memory. Both patch-major and device NCHW input paths are supported;
+equal distances select the lowest bank index. The bank remains FP32.
+
+Use `configs/jetson_fp32_cuda_warp.yaml` or
+`configs/jetson_fp16_cuda_warp.yaml` for isolated comparisons at S0. Existing CUDA
+configs keep the original kernel. Unit tests cover tail dimensions, small banks,
+cross-warp ties, and NCHW inputs. Normal and anomalous bottle images passed the
+existing numerical comparison bounds. Full bottle evaluation measured Image
+AUROC 1.0 and Pixel AUROC 0.985454531 for FP16 with `cuda_warp`.
+
+The three-run `e4-bottle-fp16-cuda-warp` experiment at MAXN_SUPER (ID 2), with
+50 warm-up and 200 measured iterations per run, averaged 740.944 ms NN time,
+846.976 ms total latency, 11.071 W, and 9.377 J/image. These measurements use
+one fixed normal image, not the full test split. Raw CSV, power logs, and manifests
+remain in the local `results/` directory; the binary recorded commit `34f0530`
+and a dirty worktree because the warp changes had not yet been committed.
+
 후보:
 - tiling
 - shared memory

@@ -82,6 +82,43 @@ void testCpuCudaAgreement() {
     }
 }
 
+void testWarpCudaSearch() {
+    // Tail dimensions, partial bank traversal, ties across warps, and NCHW input.
+    constexpr std::size_t dimensions = 65;
+    constexpr std::size_t rows = 17;
+    constexpr std::size_t count = 3;
+    std::vector<float> values(rows * dimensions);
+    for (std::size_t r = 0; r < rows; ++r)
+        for (std::size_t d = 0; d < dimensions; ++d)
+            values[r * dimensions + d] = static_cast<float>(r + d % 7);
+    std::copy_n(values.data(), dimensions, values.data() + 8 * dimensions);
+    const MemoryBank bank(values, rows, dimensions);
+    std::vector<float> queries(count * dimensions), nchw(queries.size());
+    for (std::size_t q = 0; q < count; ++q)
+        for (std::size_t d = 0; d < dimensions; ++d) {
+            queries[q * dimensions + d] = values[q * 5 * dimensions + d] + 0.125F;
+            nchw[d * count + q] = queries[q * dimensions + d];
+        }
+    const CpuBruteForceSearch cpu;
+    const auto expected = cpu.search(queries.data(), count, dimensions, bank);
+    const CudaBruteForceSearch optimized(bank, count, true);
+    const auto actual = optimized.search(queries.data(), count, dimensions, bank);
+    require(actual.indices == expected.indices, "Warp CUDA nearest indices differ");
+    require(actual.indices[0] == 0, "Warp CUDA must select lowest tied index");
+    CudaBuffer device(nchw.size() * sizeof(float));
+    checkCuda(cudaMemcpy(device.data(), nchw.data(), nchw.size() * sizeof(float),
+                         cudaMemcpyHostToDevice), "Warp test H2D failed");
+    const auto resident = optimized.searchDeviceNchw(
+        static_cast<const float*>(device.data()), dimensions, 1, count, bank);
+    require(resident.nearest.indices == expected.indices, "Warp NCHW indices differ");
+    for (std::size_t q = 0; q < count; ++q) {
+        require(std::abs(actual.distances[q] - expected.distances[q]) < 1e-5F,
+                "Warp CUDA distance differs");
+        require(std::abs(resident.nearest.distances[q] - expected.distances[q]) < 1e-5F,
+                "Warp NCHW distance differs");
+    }
+}
+
 void testCpuCudaTieBreaking() {
     const MemoryBank bank({1.0F, 2.0F, 1.0F, 2.0F, 4.0F, 5.0F}, 3, 2);
     const std::vector<float> queries{1.0F, 2.0F};
@@ -171,6 +208,7 @@ int main() {
         testPatchLayoutAndNearestNeighbor();
         testCpuCudaAgreement();
         testCpuCudaTieBreaking();
+        testWarpCudaSearch();
         testDeviceNchwNearestNeighbor();
         testMemoryBankRejectsNonFiniteValues();
         testPostprocessing();

@@ -6,7 +6,7 @@ category: bottle
 model: patchcore_wide_resnet50_2
 precision: fp32
 bank_precision: fp32
-nn_backend: cuda
+nn_backend: cuda_warp
 optimization_stage: S0
 device: jetson_orin_nano
 jetpack: 6.2.1
