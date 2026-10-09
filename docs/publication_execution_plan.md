@@ -33,7 +33,7 @@ Do not derive smaller banks by truncating the 10% bank. For every ratio:
 Exit criterion: five hash-joined configurations in `coreset_results.csv`, with
 Table 3 and Figure 5 generated without `--allow-incomplete`.
 
-## Gate 3 — Precision and bank storage
+## Gate 3 — Precision and bank storage (precision complete; bank storage pending)
 
 On the fixed 10% bottle artifacts and final NN backend, compare FP32, FP16 and
 INT8 feature engines. INT8 calibration uses train-normal images only. Separately
@@ -42,6 +42,14 @@ compare FP32 and FP16 bank storage with FP32 distance accumulation.
 Exit criterion: artifact-matched runtime accuracy and three-run measurements for
 each reported configuration. If INT8 is unstable or unsupported, report the
 negative result and narrow the paper claim rather than silently omitting it.
+
+The controlled precision matrix completed at commit `6985796`. FP32 and FP16
+both reached image AUROC 1.0 and pixel AUROC 0.985461/0.985455. Entropy-calibrated
+INT8 fell to image AUROC 0.688889 and pixel AUROC 0.761489, while end-to-end
+latency improved only from 550.245 ms (FP16) to 523.076 ms because exact NN
+search remained dominant. The INT8 path is therefore retained as a negative
+result and is not a deployment candidate. The FP32/FP16 bank-storage comparison
+remains before this gate is closed.
 
 After building the INT8 engine, the controlled S5 precision plan is
 `configs/paper_precision_matrix.json`. Run it with a dedicated accuracy CSV so

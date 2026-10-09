@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "experiments": [
+    {
+      "experiment_id": "paper-bottle-system-s0",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s0.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-system-s1",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s1.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-system-s2",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s2.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-system-s3",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s3.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-system-s4",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s4.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-system-s5",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s5.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    },
+    {
+      "experiment_id": "paper-bottle-system-s6",
+      "groups": ["system"],
+      "config": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s6.yaml",
+      "benchmark_image": "datasets/MVTecAD/bottle/test/good/000.png",
+      "category": "bottle"
+    }
+  ]
+}

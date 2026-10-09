@@ -69,11 +69,11 @@ def main() -> None:
     for stage in args.stages:
         path = args.output_dir / f"{args.baseline.stem}_{stage.lower()}.yaml"
         path.write_text(with_stage(baseline_text, stage), encoding="utf-8")
-        outputs.append({"stage": stage, "path": str(path.resolve()), "sha256": sha256(path)})
+        outputs.append({"stage": stage, "path": str(path), "sha256": sha256(path)})
     manifest = {
         "schema_version": 1,
         "baseline": {
-            "path": str(args.baseline.resolve()),
+            "path": str(args.baseline),
             "sha256": sha256(args.baseline),
         },
         "implemented_stages": list(IMPLEMENTED_STAGES),

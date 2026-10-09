@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "path": "configs/jetson_fp16_cuda_tiled_async_transpose_s5.yaml",
+    "sha256": "5d8e8ca6940fa768961b97d879f070ae38d72465b9761db81423032ca505128e"
+  },
+  "implemented_stages": [
+    "S0",
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6"
+  ],
+  "outputs": [
+    {
+      "stage": "S0",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s0.yaml",
+      "sha256": "5aa41d6e3b9557d4df07b582464c4a1fc12d5113616f63993616d8b9995dff80"
+    },
+    {
+      "stage": "S1",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s1.yaml",
+      "sha256": "dcb4fc9a6ed5fd050922a7a6dcb5100256bf6f4af560488f5e303622feca913b"
+    },
+    {
+      "stage": "S2",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s2.yaml",
+      "sha256": "6c80253ff30f562398cf4926cd591a7c0701c6ff4d0faf6c094ce3431eb235eb"
+    },
+    {
+      "stage": "S3",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s3.yaml",
+      "sha256": "521790ac68cc9489f903d0b6c3e00a6953492155059e5cab2b41c289aeb98b1e"
+    },
+    {
+      "stage": "S4",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s4.yaml",
+      "sha256": "d785d963a97f0d0292f7a70ac7d835967b74a790f00af6ed8501079521ee58f8"
+    },
+    {
+      "stage": "S5",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s5.yaml",
+      "sha256": "5d8e8ca6940fa768961b97d879f070ae38d72465b9761db81423032ca505128e"
+    },
+    {
+      "stage": "S6",
+      "path": "configs/paper_system_bottle/jetson_fp16_cuda_tiled_async_transpose_s5_s6.yaml",
+      "sha256": "13e500b55e9a4755dc596729cef7a83f959e05d86cb620d350536ce94bedb944"
+    }
+  ]
+}

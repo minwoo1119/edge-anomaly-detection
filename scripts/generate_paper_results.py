@@ -24,6 +24,7 @@ METRICS = (
     "nn_mean",
     "post_mean",
     "total_mean",
+    "total_p95",
     "fps_mean",
     "bank_size_mb",
     "engine_size_mb",

@@ -7,11 +7,12 @@ only when its evidence row is complete and artifact hashes match.
 |---|---|---|---|
 | C1 | Optimizing only the feature extractor does not remove the PatchCore edge bottleneck. | FP16 S0: TensorRT 3.435 ms, NN 4332.665 ms, total 4435.535 ms. `results/paper_draft/processed/precision_aggregate.csv` | Supported for bottle 10%; multi-category confirmation pending. |
 | C2 | GPU-resident, layout-aware memory-bank retrieval substantially reduces end-to-end latency. | Clean final S5: total 498.486 ms, NN 413.914 ms. FP32 CPU baseline: total about 14.5 s. `results/processed/e9-bottle-fp16-async-transpose-s5-clean01_results.csv` | Combined-stack improvement is supported; isolated attribution requires the final ablation table. |
-| C3 | The final FP16 runtime preserves bottle detection accuracy. | Image AUROC 1.0, pixel AUROC 0.9854545306151844 on 83 test images; correctness dumps match direct S5. | Supported for bottle only. |
-| C4 | Retrieval optimization improves energy efficiency as well as latency. | Original FP16 CUDA: about 69.75 J/image; final clean S5: 6.70 J/image. | Cross-session comparison; final controlled comparison pending. |
+| C3 | The final FP16 runtime preserves bottle detection accuracy. | Controlled S5 precision matrix: FP32 image/pixel AUROC 1.0/0.985461354; FP16 1.0/0.985454531 on 83 test images. Accuracy and performance rows share executable, config, engine and bank hashes. | Supported for bottle only. |
+| C4 | Retrieval optimization improves energy efficiency as well as latency. | Original FP16 CUDA: about 69.75 J/image; final clean S5: 6.70 J/image. | Cross-session comparison; final controlled system ablation pending. |
 | C5 | Coreset reduction exposes a useful accuracy–latency–memory Pareto frontier. | None yet. | Do not claim until five-ratio experiment completes. |
 | C6 | The selected configuration generalizes across industrial object and texture categories. | Bottle only. | Do not claim until all 15 MVTec AD categories are evaluated. |
 | C7 | The system is real-time for industrial inspection. | Bottle p95 about 514 ms, throughput about 2 FPS. | Must define an application deadline at or above measured p95 and complete sustained-run validation. |
+| C8 | Naive entropy-calibrated INT8 PTQ is unsuitable for this PatchCore deployment. | Controlled S5 matrix: image AUROC fell from 1.0 (FP16) to 0.688889 and pixel AUROC from 0.985455 to 0.761489. Mean total latency changed from 550.245 to 523.076 ms because NN search remained dominant. | Supported as a bottle-specific negative result; do not generalize to QAT or mixed precision. |
 
 ## Reporting rules
 
