@@ -200,6 +200,7 @@ class MergeExperimentResultsTest(unittest.TestCase):
             "config_sha256": "config",
             "engine_sha256": "engine",
             "memory_bank_sha256": "bank",
+            "executable_sha256": "executable",
             "category": "bottle",
             "precision": "fp16",
             "coreset_ratio": "0.1",
@@ -238,6 +239,12 @@ class MergeExperimentResultsTest(unittest.TestCase):
     def test_artifact_mismatch_is_rejected(self) -> None:
         accuracy = self.accuracy()
         accuracy["engine_sha256"] = "different"
+        with self.assertRaises(RuntimeError):
+            merge_experiment_results.merge_rows([self.benchmark()], [accuracy])
+
+    def test_executable_mismatch_is_rejected(self) -> None:
+        accuracy = self.accuracy()
+        accuracy["executable_sha256"] = "different"
         with self.assertRaises(RuntimeError):
             merge_experiment_results.merge_rows([self.benchmark()], [accuracy])
 

@@ -27,6 +27,8 @@ Do not derive smaller banks by truncating the 10% bank. For every ratio:
 - evaluate all bottle test images once without test-set threshold tuning;
 - run 50 warm-up + 200 measurements, three independent runs;
 - record bank entries/size, image/pixel AUROC, stage latency, power and energy.
+- require the exact runtime executable SHA-256 to match between accuracy and
+  benchmark rows, in addition to config, engine and memory-bank hashes.
 
 Exit criterion: five hash-joined configurations in `coreset_results.csv`, with
 Table 3 and Figure 5 generated without `--allow-incomplete`.

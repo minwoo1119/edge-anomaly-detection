@@ -131,6 +131,7 @@ CONFIG_SHA256="$(sha256sum "${CONFIG}" | awk '{print $1}')"
 IMAGE_SHA256="$(sha256sum "${IMAGE}" | awk '{print $1}')"
 ENGINE_SHA256="$(sha256sum "${ENGINE}" | awk '{print $1}')"
 BANK_SHA256="$(sha256sum "${BANK}" | awk '{print $1}')"
+EXECUTABLE_SHA256="$(sha256sum "${PROJECT_ROOT}/jetson/build/edge_anomaly" | awk '{print $1}')"
 
 cd "${PROJECT_ROOT}"
 "${PROJECT_ROOT}/jetson/build/edge_anomaly" \
@@ -142,6 +143,7 @@ cd "${PROJECT_ROOT}"
     --engine-sha256 "${ENGINE_SHA256}" \
     --memory-bank-sha256 "${BANK_SHA256}" \
     --image-sha256 "${IMAGE_SHA256}" \
+    --executable-sha256 "${EXECUTABLE_SHA256}" \
     --benchmark-ready "${READY_FILE}" \
     --benchmark-start "${START_FILE}" &
 BENCHPID=$!

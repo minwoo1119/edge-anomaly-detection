@@ -294,6 +294,7 @@ def main() -> None:
         "config_sha256": sha256(args.config),
         "engine_sha256": sha256(engine),
         "memory_bank_sha256": sha256(memory_bank),
+        "executable_sha256": sha256(args.executable),
         "evaluation_dataset_sha256": dataset_sha256,
         "image_count": len(images),
         "pixel_count": sum(values.size for values in pixel_labels),

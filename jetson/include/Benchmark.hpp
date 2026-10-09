@@ -34,6 +34,7 @@ struct BenchmarkMetadata {
     std::string imageSha256;
     std::string engineSha256;
     std::string memoryBankSha256;
+    std::string executableSha256;
 };
 
 SummaryStatistics summarize(const std::vector<double>& values);

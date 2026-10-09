@@ -53,6 +53,7 @@ IDENTITY_FIELDS = (
     "engine_sha256",
     "memory_bank_sha256",
     "image_sha256",
+    "executable_sha256",
 )
 POWER_FIELDS = (
     "avg_power_w",

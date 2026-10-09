@@ -16,6 +16,8 @@ only when its evidence row is complete and artifact hashes match.
 ## Reporting rules
 
 - Use clean-build measurements for final headline numbers.
+- Join accuracy and benchmark rows only when executable, config, engine and
+  memory-bank SHA-256 values all match.
 - Keep negative results: direct device-NCHW S5 regressed to about 1.52 s because
   the search accessed channel-major queries with a poor memory pattern.
 - Never select a coreset ratio, INT8 calibration setting or threshold on the

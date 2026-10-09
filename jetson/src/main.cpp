@@ -63,6 +63,7 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
                       << "[--dump-nn-indices <output.npy>] [--dump-score <output.npy>] "
                       << "[--run-id <id>] [--config-sha256 <hash>] [--engine-sha256 <hash>] "
                       << "[--memory-bank-sha256 <hash>] [--image-sha256 <hash>] "
+                      << "[--executable-sha256 <hash>] "
                       << "[--benchmark-ready <path>] [--benchmark-start <path>] "
                       << "[--preprocess-only]\n";
             std::exit(0);
@@ -74,7 +75,8 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
              || argument == "--dump-score" || argument == "--dump-patches"
              || argument == "--run-id" || argument == "--config-sha256"
              || argument == "--engine-sha256" || argument == "--memory-bank-sha256"
-             || argument == "--image-sha256" || argument == "--benchmark-ready"
+             || argument == "--image-sha256" || argument == "--executable-sha256"
+             || argument == "--benchmark-ready"
              || argument == "--benchmark-start") && index + 1 >= argc) {
             throw std::invalid_argument("Missing value for argument: " + argument);
         }
@@ -94,6 +96,7 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
         else if (argument == "--engine-sha256") commandLine.benchmarkMetadata.engineSha256 = argv[++index];
         else if (argument == "--memory-bank-sha256") commandLine.benchmarkMetadata.memoryBankSha256 = argv[++index];
         else if (argument == "--image-sha256") commandLine.benchmarkMetadata.imageSha256 = argv[++index];
+        else if (argument == "--executable-sha256") commandLine.benchmarkMetadata.executableSha256 = argv[++index];
         else if (argument == "--benchmark-ready") commandLine.benchmarkReadyPath = argv[++index];
         else if (argument == "--benchmark-start") commandLine.benchmarkStartPath = argv[++index];
         else if (argument == "--preprocess-only") commandLine.preprocessOnly = true;
@@ -153,9 +156,10 @@ void validateBenchmarkInvocation(const CommandLine& commandLine) {
     }
     const BenchmarkMetadata& metadata = commandLine.benchmarkMetadata;
     if (metadata.configSha256.empty() || metadata.engineSha256.empty()
-        || metadata.memoryBankSha256.empty() || metadata.imageSha256.empty()) {
+        || metadata.memoryBankSha256.empty() || metadata.imageSha256.empty()
+        || metadata.executableSha256.empty()) {
         throw std::runtime_error(
-            "Benchmarking requires config, engine, memory-bank, and image SHA-256 metadata. "
+            "Benchmarking requires config, engine, memory-bank, image, and executable SHA-256 metadata. "
             "Use jetson/scripts/run_benchmark.sh."
         );
     }
@@ -166,7 +170,8 @@ void validateBenchmarkInvocation(const CommandLine& commandLine) {
             });
     };
     if (!validSha256(metadata.configSha256) || !validSha256(metadata.engineSha256)
-        || !validSha256(metadata.memoryBankSha256) || !validSha256(metadata.imageSha256)) {
+        || !validSha256(metadata.memoryBankSha256) || !validSha256(metadata.imageSha256)
+        || !validSha256(metadata.executableSha256)) {
         throw std::runtime_error("Benchmark artifact hashes must be 64-character SHA-256 values.");
     }
 }

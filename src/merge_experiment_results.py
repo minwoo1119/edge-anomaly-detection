@@ -13,6 +13,7 @@ ACCURACY_FIELDS = (
     "config_sha256",
     "engine_sha256",
     "memory_bank_sha256",
+    "executable_sha256",
     "evaluation_dataset_sha256",
     "image_auroc",
     "pixel_auroc",
@@ -74,7 +75,7 @@ def merge_rows(
             if (Decimal(benchmark[field]) != Decimal(accuracy[field])
                 if field == "coreset_ratio" else benchmark[field] != accuracy[field])
         ]
-        for field in ("engine_sha256", "memory_bank_sha256"):
+        for field in ("engine_sha256", "memory_bank_sha256", "executable_sha256"):
             if benchmark[field] != accuracy[field]:
                 mismatches.append(field)
         if mismatches:
@@ -107,7 +108,7 @@ def main() -> None:
         rows = read_rows(path)
         require_fields(
             rows,
-            ("config_sha256", "engine_sha256", "memory_bank_sha256", *MATCH_FIELDS),
+            ("config_sha256", "engine_sha256", "memory_bank_sha256", "executable_sha256", *MATCH_FIELDS),
             path,
         )
         benchmark_rows.extend(rows)

@@ -166,7 +166,7 @@ void writeBenchmarkCsv(
         "pipeline_priming_iterations,iteration,decision_enabled,threshold,threshold_space,"
         "threshold_source,config_path,"
         "engine_path,memory_bank_path,image_path,config_sha256,engine_sha256,memory_bank_sha256,"
-        "image_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,embedding_transform_ms,nn_ms,"
+        "image_sha256,executable_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,embedding_transform_ms,nn_ms,"
         "post_ms,total_ms,pipeline_interval_ms,fps,"
         "bank_entries,bank_size_mb,engine_size_mb,host_memory_mb";
     const bool writeHeader = !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
@@ -208,6 +208,7 @@ void writeBenchmarkCsv(
                << csvCell(config.memoryBankPath) << ',' << csvCell(metadata.imagePath) << ','
                << metadata.configSha256 << ',' << metadata.engineSha256 << ','
                << metadata.memoryBankSha256 << ',' << metadata.imageSha256 << ','
+               << metadata.executableSha256 << ','
                << sample.preprocessMs << ',' << sample.h2dMs << ','
                << sample.trtMs << ',' << sample.d2hMs << ',' << sample.reshapeMs << ','
                << sample.nnMs << ',' << sample.postprocessMs << ',' << sample.totalMs << ','
