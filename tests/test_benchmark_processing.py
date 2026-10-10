@@ -39,6 +39,9 @@ prepare_multicategory = load_module(
     "prepare_multicategory_publication",
     ROOT / "jetson" / "scripts" / "prepare_multicategory_publication.py",
 )
+run_colab_pipeline = load_module(
+    "run_colab_pipeline", ROOT / "src" / "run_colab_pipeline.py"
+)
 generate_coreset_plan = load_module(
     "generate_coreset_experiment_plan", ROOT / "src" / "generate_coreset_experiment_plan.py"
 )
@@ -109,6 +112,20 @@ class TegrastatsTest(unittest.TestCase):
         self.assertEqual(temperature, [45.5, 50.0])
         self.assertEqual(gpu, [40.0, 60.0])
         self.assertEqual(cpu, [7.5, 15.0])
+
+
+class ColabPipelineTest(unittest.TestCase):
+    def test_image_files_only_counts_supported_extensions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "a.png").write_bytes(b"image")
+            (root / "b.JPG").write_bytes(b"image")
+            (root / "notes.txt").write_text("not an image")
+
+            self.assertEqual(
+                [path.name for path in run_colab_pipeline.image_files(root)],
+                ["a.png", "b.JPG"],
+            )
 
 
 class BenchmarkSummaryTest(unittest.TestCase):

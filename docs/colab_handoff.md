@@ -201,6 +201,9 @@ configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측�
 중단된 category 폴더가 Drive에 남아 있어도 폴더 전체를 지울 필요가 없습니다.
 노트북은 새 로컬 임시 폴더에서 해당 category를 다시 생성하고, 검증된 ZIP과
 체크섬을 교체한 뒤 `COMPLETE.json`을 마지막에 기록합니다.
+카테고리의 train-normal 이미지가 `CALIBRATION_IMAGES`보다 적으면 가용한
+이미지를 모두 사용합니다. 예를 들어 toothbrush는 100장 요청 시 60장을
+사용하며, 실제 장수는 calibration manifest에 기록됩니다.
 
 각 category bundle은 독립 checkpoint, training/export/evaluation manifest,
 ONNX, memory bank, train-normal INT8 calibration 입력과 correctness reference를

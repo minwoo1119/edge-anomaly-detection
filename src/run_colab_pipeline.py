@@ -13,11 +13,15 @@ from pathlib import Path
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
 
-def first_image(directory: Path) -> Path:
-    images = sorted(
+def image_files(directory: Path) -> list[Path]:
+    return sorted(
         path for path in directory.rglob("*")
         if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
     )
+
+
+def first_image(directory: Path) -> Path:
+    images = image_files(directory)
     if not images:
         raise RuntimeError(f"No image found in {directory}")
     return images[0]
@@ -83,6 +87,15 @@ def main() -> None:
     validation_image = first_image(train_normal)
     normal_reference = first_image(test_normal)
     anomalous_reference = first_anomalous_image(test_root)
+    available_calibration_images = len(image_files(train_normal))
+    calibration_images = min(args.calibration_images, available_calibration_images)
+    if calibration_images < args.calibration_images:
+        print(
+            "calibration_images_adjusted="
+            f"{calibration_images} requested={args.calibration_images} "
+            f"available={available_calibration_images}",
+            flush=True,
+        )
     models = args.output_root / "models"
     metadata = args.output_root / "results" / "metadata"
     csv_directory = args.output_root / "results" / "csv"
@@ -169,7 +182,7 @@ def main() -> None:
             "--output-dir",
             str(calibration),
             "--images",
-            str(args.calibration_images),
+            str(calibration_images),
         ]
     )
     for image, prefix in (
