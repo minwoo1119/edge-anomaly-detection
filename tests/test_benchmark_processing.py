@@ -35,6 +35,10 @@ run_coreset_ablation = load_module(
 prepare_colab_bundle = load_module(
     "prepare_colab_bundle", ROOT / "jetson" / "scripts" / "prepare_colab_bundle.py"
 )
+prepare_multicategory = load_module(
+    "prepare_multicategory_publication",
+    ROOT / "jetson" / "scripts" / "prepare_multicategory_publication.py",
+)
 generate_coreset_plan = load_module(
     "generate_coreset_experiment_plan", ROOT / "src" / "generate_coreset_experiment_plan.py"
 )
@@ -286,6 +290,16 @@ class CoresetAblationTest(unittest.TestCase):
             [generate_coreset_plan.ratio_tag(value) for value in generate_coreset_plan.EXPECTED_RATIOS],
             ["c001", "c0025", "c005", "c01", "c02"],
         )
+
+
+class MultiCategoryPreparationTest(unittest.TestCase):
+    def test_all_mvtec_categories_are_required_once(self) -> None:
+        categories = prepare_multicategory.MVTEC_CATEGORIES
+        self.assertEqual(len(categories), 15)
+        self.assertEqual(len(set(categories)), 15)
+        self.assertIn("bottle", categories)
+        self.assertIn("zipper", categories)
+        self.assertEqual(prepare_multicategory.EXPECTED_RATIO, prepare_multicategory.Decimal("0.1"))
 
 
 class ArtifactLineageTest(unittest.TestCase):

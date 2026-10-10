@@ -203,3 +203,34 @@ configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측�
 ONNX, memory bank, train-normal INT8 calibration 입력과 correctness reference를
 포함합니다. 15개 `COMPLETE.json`이 모두 생기기 전에는 multi-category 결과가
 완료된 것으로 간주하지 않습니다.
+
+노트북은 자동 다운로드한 category 데이터도
+`edge-anomaly-input/datasets/MVTecAD/<category>/`에 보존합니다. 완료 후 다음 두
+Drive 디렉터리를 구조 그대로 Jetson으로 복사합니다.
+
+```text
+edge-anomaly-output/mvtec15_seed42_c01/
+edge-anomaly-input/datasets/MVTecAD/
+```
+
+Jetson 저장 위치는 각각 아래와 같습니다.
+
+```text
+outputs/transfers/mvtec15_seed42_c01/
+datasets/MVTecAD/
+```
+
+15개 bundle과 데이터셋을 받은 뒤 한 명령으로 bundle을 검증하고, category별
+FP16 TensorRT engine/config와 experiment matrix를 생성합니다.
+
+```bash
+python3 jetson/scripts/prepare_multicategory_publication.py \
+  --bundle-root outputs/transfers/mvtec15_seed42_c01 \
+  --dataset-root datasets/MVTecAD \
+  --artifact-root artifacts/mvtec15 \
+  --config-dir results/configs/paper_mvtec15 \
+  --plan-output results/plans/paper_mvtec15.json
+```
+
+그 다음 `run_experiment_matrix.py`를 `--dry-run`으로 검토한 후 실제 실행합니다.
+완료 결과는 `results/processed/multi_category_results.csv`에 병합됩니다.
