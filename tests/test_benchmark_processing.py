@@ -42,6 +42,9 @@ prepare_multicategory = load_module(
 run_colab_pipeline = load_module(
     "run_colab_pipeline", ROOT / "src" / "run_colab_pipeline.py"
 )
+cache_mvtec_dataset = load_module(
+    "cache_mvtec_dataset", ROOT / "src" / "cache_mvtec_dataset.py"
+)
 generate_coreset_plan = load_module(
     "generate_coreset_experiment_plan", ROOT / "src" / "generate_coreset_experiment_plan.py"
 )
@@ -126,6 +129,17 @@ class ColabPipelineTest(unittest.TestCase):
                 [path.name for path in run_colab_pipeline.image_files(root)],
                 ["a.png", "b.JPG"],
             )
+
+    def test_dataset_cache_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            category = Path(directory) / "bottle"
+            for relative in ("train/good", "test/good", "ground_truth"):
+                (category / relative).mkdir(parents=True)
+
+            cache_mvtec_dataset.validate_category(category)
+            (category / "ground_truth").rmdir()
+            with self.assertRaises(RuntimeError):
+                cache_mvtec_dataset.validate_category(category)
 
 
 class BenchmarkSummaryTest(unittest.TestCase):

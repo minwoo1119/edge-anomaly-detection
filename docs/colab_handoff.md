@@ -204,6 +204,9 @@ configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측�
 카테고리의 train-normal 이미지가 `CALIBRATION_IMAGES`보다 적으면 가용한
 이미지를 모두 사용합니다. 예를 들어 toothbrush는 100장 요청 시 60장을
 사용하며, 실제 장수는 calibration manifest에 기록됩니다.
+완료된 category도 Drive 입력 캐시를 먼저 확인하므로, 이전 실행에서 누락된
+데이터셋은 재학습 없이 다음 실행에서 보충됩니다. 완료 후 수동 보충이 필요하면
+`src/cache_mvtec_dataset.py`로 Colab 로컬 데이터셋을 Drive에 복사할 수 있습니다.
 
 각 category bundle은 독립 checkpoint, training/export/evaluation manifest,
 ONNX, memory bank, train-normal INT8 calibration 입력과 correctness reference를
