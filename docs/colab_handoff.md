@@ -198,6 +198,9 @@ configuration은 전체 test 정확도 평가 1회와 50회 warm-up/200회 측�
 `edge-anomaly-output/mvtec15_seed42_c01/<category>/`에 저장합니다. Colab 세션
 제한을 고려해 `CATEGORIES_TO_RUN`을 3–5개씩 나눌 수 있으며,
 `COMPLETE.json`이 존재하는 category는 재실행 시 건너뜁니다.
+중단된 category 폴더가 Drive에 남아 있어도 폴더 전체를 지울 필요가 없습니다.
+노트북은 새 로컬 임시 폴더에서 해당 category를 다시 생성하고, 검증된 ZIP과
+체크섬을 교체한 뒤 `COMPLETE.json`을 마지막에 기록합니다.
 
 각 category bundle은 독립 checkpoint, training/export/evaluation manifest,
 ONNX, memory bank, train-normal INT8 calibration 입력과 correctness reference를
