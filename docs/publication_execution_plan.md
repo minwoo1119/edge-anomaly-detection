@@ -17,7 +17,7 @@ research question. The publication work now follows these gates.
 The canonical current result is
 `results/processed/e9-bottle-fp16-async-transpose-s5-clean01_results.csv`.
 
-## Gate 2 — Coreset trade-off (next)
+## Gate 2 — Coreset trade-off (complete)
 
 Train independent bottle artifacts at 1%, 2.5%, 5%, 10% and 20% using seed 42.
 Do not derive smaller banks by truncating the 10% bank. For every ratio:
@@ -32,6 +32,14 @@ Do not derive smaller banks by truncating the 10% bank. For every ratio:
 
 Exit criterion: five hash-joined configurations in `coreset_results.csv`, with
 Table 3 and Figure 5 generated without `--allow-incomplete`.
+
+The five independently trained bottle variants completed at commit `09f6523`.
+Ratios 1%, 2.5%, 5%, 10%, and 20% contain 2,140, 5,350, 10,700, 21,401,
+and 42,803 bank entries. All retain image AUROC 1.0; pixel AUROC ranges only
+from 0.984961 to 0.985500. Mean latency increases from 72.093 ms at 1% to
+992.520 ms at 20%, while serialized bank size increases from 12.539 MB to
+250.799 MB. The canonical joined input is
+`results/processed/coreset_results.csv`.
 
 ## Gate 3 — Precision and bank storage (complete)
 

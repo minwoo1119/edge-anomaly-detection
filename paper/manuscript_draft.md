@@ -23,7 +23,9 @@ macro image and pixel AUROC of 0.983314 and 0.979761; category mean latency
 ranges from 164.050 to 906.637 ms as memory-bank size changes. These results
 demonstrate why edge anomaly-detection studies must report the complete
 retrieval pipeline and distinguish latency, throughput interval, storage, and
-runtime memory. The coreset ablation remains pending.
+runtime memory. A five-ratio bottle coreset study further shows that reducing
+the bank from 20% to 1% lowers mean latency from 992.520 to 72.093 ms and bank
+size from 250.799 to 12.539 MB while retaining image AUROC 1.0.
 
 **Keywords:** industrial anomaly detection; PatchCore; edge inference; TensorRT;
 CUDA; nearest-neighbor search; Jetson Orin Nano
@@ -54,9 +56,9 @@ persistent buffers, pinned staging, asynchronous copies, a dedicated CUDA
 stream, GPU-resident retrieval, and two-frame overlap under controlled
 conditions. Third, we quantify precision and storage trade-offs, including
 negative INT8 and FP16-bank results that would be hidden by feature-extractor
-benchmarks. Finally, we evaluate the selected configuration on all 15 MVTec AD
-categories using independently trained category-specific memory banks. The
-final submission will add five independently trained bottle coreset ratios.
+benchmarks. Finally, we evaluate five independently trained bottle coreset
+ratios and the selected configuration on all 15 MVTec AD categories using
+independently trained category-specific memory banks.
 
 ## 2. Related Work
 
@@ -174,15 +176,27 @@ Mean latency is 503.152 ms for the FP32 file and 523.113 ms for FP16, with large
 NN run variation; no speedup is supported. Native FP16 device storage with FP32
 accumulation remains a separate implementation question.
 
-### 5.4 Pending final experiments
+### 5.4 Coreset trade-off
 
-**Coreset ablation:** `[PLACEHOLDER: independently trained 1%, 2.5%, 5%, 10%,
-20% results and Pareto analysis]`.
+The independently trained 1%, 2.5%, 5%, 10%, and 20% bottle coresets contain
+2,140, 5,350, 10,700, 21,401, and 42,803 vectors. All five achieve image AUROC
+1.0. Pixel AUROC changes only from 0.984961 at 1% to 0.985500 at 20%, a range of
+0.000540.
+
+System cost changes substantially. Mean end-to-end latency is 72.093, 155.172,
+283.882, 570.156, and 992.520 ms as the ratio increases. Serialized bank size
+is 12.539, 31.348, 62.695, 125.396, and 250.799 MB, and mean energy rises from
+0.865 J/image at 1% to 13.599 J/image at 20%. Under image AUROC, the 1% variant
+dominates every larger tested ratio. The result is specific to bottle and seed
+42; the small pixel-level differences and independently trained lineage are
+retained rather than treating the banks as truncations of one export.
+
+### 5.5 Pending retrieval experiment
 
 **Retrieval backend ablation:** `[PLACEHOLDER: controlled CPU, direct CUDA,
 warp, tiled, asynchronous tiled, and transpose-assisted comparison]`.
 
-### 5.5 Multi-category evaluation
+### 5.6 Multi-category evaluation
 
 The selected FP16/S5 runtime reaches macro image AUROC 0.983314 and macro pixel
 AUROC 0.979761 across all 15 MVTec AD categories. The object-category averages
@@ -213,10 +227,11 @@ deadline are consistent with measured p95 interval and completion time. The
 final paper will add a sustained thermal run and state the deadline explicitly.
 
 The study currently has three material limits: it covers one benchmark, one
-embedded platform, and exact brute-force retrieval. The pending coreset study is
-required before claiming an accuracy-latency-memory frontier. Approximate
-retrieval and alternate backbones are useful future comparisons but are outside
-the fixed-representation systems question studied here.
+embedded platform, and exact brute-force retrieval. The coreset frontier is
+demonstrated on bottle with a single seed and should not be assumed identical
+for every category. Approximate retrieval and alternate backbones are useful
+future comparisons but are outside the fixed-representation systems question
+studied here.
 
 ## 7. Conclusion
 
@@ -228,5 +243,6 @@ provide measurable systems gains, while entropy INT8 and FP16 bank serialization
 show accuracy and runtime-memory limitations that must be reported explicitly.
 The 15-category results show that the selected configuration retains strong
 accuracy while retrieval remains dominant across diverse memory-bank sizes. The
-final claims will be frozen after the coreset, retrieval-backend, and
-sustained-run gates are complete.
+coreset experiment shows that large edge-runtime gains are possible with a
+small bank and negligible bottle accuracy change. The final claims will be
+frozen after the retrieval-backend and sustained-run gates are complete.
