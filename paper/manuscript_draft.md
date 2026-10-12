@@ -18,10 +18,12 @@ pixel AUROC of 1.0 and 0.985455. Entropy-calibrated INT8 is an unfavorable
 trade-off in this setting: image AUROC falls to 0.688889 for a 4.9% latency
 reduction relative to FP16. FP16 bank serialization halves the artifact payload
 without reducing runtime memory because the current loader restores FP32
-values. These results demonstrate why edge anomaly-detection studies must report
-the complete retrieval pipeline and distinguish latency, throughput interval,
-storage, and runtime memory. Multi-category and coreset results are pending and
-will replace the marked placeholders before submission.
+values. Across all 15 MVTec AD categories, the selected FP16 runtime reaches
+macro image and pixel AUROC of 0.983314 and 0.979761; category mean latency
+ranges from 164.050 to 906.637 ms as memory-bank size changes. These results
+demonstrate why edge anomaly-detection studies must report the complete
+retrieval pipeline and distinguish latency, throughput interval, storage, and
+runtime memory. The coreset ablation remains pending.
 
 **Keywords:** industrial anomaly detection; PatchCore; edge inference; TensorRT;
 CUDA; nearest-neighbor search; Jetson Orin Nano
@@ -52,8 +54,9 @@ persistent buffers, pinned staging, asynchronous copies, a dedicated CUDA
 stream, GPU-resident retrieval, and two-frame overlap under controlled
 conditions. Third, we quantify precision and storage trade-offs, including
 negative INT8 and FP16-bank results that would be hidden by feature-extractor
-benchmarks. The final submission will add five independently trained coreset
-ratios and all 15 MVTec AD categories.
+benchmarks. Finally, we evaluate the selected configuration on all 15 MVTec AD
+categories using independently trained category-specific memory banks. The
+final submission will add five independently trained bottle coreset ratios.
 
 ## 2. Related Work
 
@@ -118,6 +121,12 @@ runs. We report mean stage time, mean per-run p95, between-run standard
 deviation, average and peak power, and energy per image. `tegrastats` is sampled
 every 100 ms. No accuracy threshold is tuned on the test split.
 
+The multi-category experiment evaluates all 15 MVTec AD categories. Each
+category uses its own seed-42 model and independently selected 10% coreset. Full
+test splits supply image and pixel AUROC, while three independent performance
+runs use one fixed normal image per category under the same 50/200 protocol.
+Macro averages give every category equal weight.
+
 The precision comparison fixes the 10% FP32 bank and final S5 retrieval path.
 INT8 uses entropy calibration from 100 train-normal tensors. The system
 comparison fixes the FP16 engine, bank, retrieval kernel, and executable while
@@ -173,8 +182,22 @@ accumulation remains a separate implementation question.
 **Retrieval backend ablation:** `[PLACEHOLDER: controlled CPU, direct CUDA,
 warp, tiled, asynchronous tiled, and transpose-assisted comparison]`.
 
-**Multi-category evaluation:** `[PLACEHOLDER: all 15 MVTec AD category results,
-macro averages, representative object/texture performance]`.
+### 5.5 Multi-category evaluation
+
+The selected FP16/S5 runtime reaches macro image AUROC 0.983314 and macro pixel
+AUROC 0.979761 across all 15 MVTec AD categories. The object-category averages
+are 0.978531/0.984692, and the texture-category averages are
+0.992882/0.969898. Toothbrush has the lowest image AUROC (0.919444), while wood
+has the lowest pixel AUROC (0.929994); these results prevent an unqualified
+near-perfect-accuracy claim.
+
+Mean end-to-end latency varies from 164.050 ms for toothbrush to 906.637 ms for
+hazelnut. Their banks contain 6,144 and 40,038 entries, respectively. Across
+categories, macro mean latency is 574.334 ms, mean throughput is 1.991 images/s,
+mean power is 14.043 W, and mean energy is 8.128 J/image. TensorRT averages only
+a few milliseconds in every category, whereas exact NN retrieval ranges from
+119.257 to 780.257 ms, confirming that retrieval remains the system bottleneck
+beyond the bottle case.
 
 ## 6. Discussion
 
@@ -189,9 +212,9 @@ claim is valid only for an inspection process whose specified cycle and response
 deadline are consistent with measured p95 interval and completion time. The
 final paper will add a sustained thermal run and state the deadline explicitly.
 
-The study currently has three material limits: evidence covers one category,
-one embedded platform, and exact brute-force retrieval. The coreset and
-multi-category experiments are required before claiming generality. Approximate
+The study currently has three material limits: it covers one benchmark, one
+embedded platform, and exact brute-force retrieval. The pending coreset study is
+required before claiming an accuracy-latency-memory frontier. Approximate
 retrieval and alternate backbones are useful future comparisons but are outside
 the fixed-representation systems question studied here.
 
@@ -203,5 +226,7 @@ bottle accuracy and greatly accelerates feature extraction, yet exact retrieval
 limits the end-to-end benefit. Pinned staging and controlled pipeline overlap
 provide measurable systems gains, while entropy INT8 and FP16 bank serialization
 show accuracy and runtime-memory limitations that must be reported explicitly.
-The final claims will be frozen after the coreset, retrieval-backend,
-multi-category, and sustained-run gates are complete.
+The 15-category results show that the selected configuration retains strong
+accuracy while retrieval remains dominant across diverse memory-bank sizes. The
+final claims will be frozen after the coreset, retrieval-backend, and
+sustained-run gates are complete.

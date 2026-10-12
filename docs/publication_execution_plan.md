@@ -76,7 +76,7 @@ S2). S6 reached a 482.350 ms steady-state interval and 6.426 J/image. Its
 CPU/direct-CUDA/warp/tiled/async/transpose retrieval comparison remains before
 this gate is closed.
 
-## Gate 5 — Multi-category generality
+## Gate 5 — Multi-category generality (complete)
 
 Train and evaluate all 15 MVTec AD categories with the selected precision,
 coreset ratio and NN backend. At minimum, retain full accuracy for all categories
@@ -85,6 +85,14 @@ preferred submission dataset contains three performance runs for every category.
 
 Exit criterion: category-wise AUROC table covers all 15 categories and the paper
 does not generalize from bottle alone.
+
+The selected FP16/S5 configuration was evaluated on all 15 MVTec AD categories
+at commit `09f6523`. Each category has one full-test accuracy evaluation and
+three independent 50-warm-up/200-measured Jetson runs. The resulting macro image
+and pixel AUROC are 0.983314 and 0.979761. The canonical joined input is
+`results/processed/multi_category_results.csv`, with the matrix manifest at
+`results/metadata/paper_mvtec15_run01.json` and generated Table 5 under
+`results/paper_mvtec15_complete/`.
 
 ## Gate 6 — Real-time claim and robustness
 
