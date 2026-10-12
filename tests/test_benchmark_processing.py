@@ -48,6 +48,10 @@ cache_mvtec_dataset = load_module(
 generate_coreset_plan = load_module(
     "generate_coreset_experiment_plan", ROOT / "src" / "generate_coreset_experiment_plan.py"
 )
+generate_nn_backend_plan = load_module(
+    "generate_nn_backend_experiment_plan",
+    ROOT / "src" / "generate_nn_backend_experiment_plan.py",
+)
 generate_system_configs = load_module(
     "generate_system_configs", ROOT / "src" / "generate_system_configs.py"
 )
@@ -321,6 +325,28 @@ class CoresetAblationTest(unittest.TestCase):
             [generate_coreset_plan.ratio_tag(value) for value in generate_coreset_plan.EXPECTED_RATIOS],
             ["c001", "c0025", "c005", "c01", "c02"],
         )
+
+
+class NnBackendPlanTest(unittest.TestCase):
+    def test_generation_changes_only_backend_and_sets_s0(self) -> None:
+        base = (
+            "engine_path: model.engine\n"
+            "memory_bank_path: bank.npy\n"
+            "engine_manifest_path: engine.json\n"
+            "export_manifest_path: export.json\n"
+            "category: bottle\nmodel: patchcore\nprecision: fp16\n"
+            "bank_precision: fp32\nnn_backend: cuda_tiled_async_transpose\n"
+            "optimization_stage: S5\ncoreset_ratio: 0.1\n"
+            "input_width: 256\ninput_height: 256\nnum_neighbors: 9\n"
+            "gaussian_sigma: 4.0\nwarmup: 50\nrepeats: 200\n"
+        )
+        generated = generate_nn_backend_plan.generate(base)
+        self.assertEqual(tuple(generated), generate_nn_backend_plan.BACKENDS)
+        for backend, text in generated.items():
+            values = generate_nn_backend_plan.flat_config(text)
+            self.assertEqual(values["nn_backend"], backend)
+            self.assertEqual(values["optimization_stage"], "S0")
+            self.assertEqual(values["engine_path"], "model.engine")
 
 
 class MultiCategoryPreparationTest(unittest.TestCase):

@@ -362,7 +362,12 @@ def main() -> None:
         ("precision", "precision", {"fp32", "fp16", "int8"}, ("category", "coreset_ratio", "bank_precision", "nn_backend", "optimization_stage", "power_mode")),
         ("bank_storage", "bank_precision", {"fp32", "fp16"}, ("category", "precision", "coreset_ratio", "nn_backend", "optimization_stage", "power_mode")),
         ("coreset", "coreset_ratio", {"0.01", "0.025", "0.05", "0.1", "0.10", "0.2", "0.20"}, ("category", "precision", "bank_precision", "nn_backend", "optimization_stage", "power_mode")),
-        ("nn_backend", "nn_backend", {"cpu", "cuda"}, ("category", "precision", "coreset_ratio", "bank_precision", "optimization_stage", "power_mode")),
+        (
+            "nn_backend",
+            "nn_backend",
+            {"cpu", "cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_async", "cuda_tiled_async_transpose"},
+            ("category", "precision", "coreset_ratio", "bank_precision", "optimization_stage", "power_mode"),
+        ),
         ("system", "optimization_stage", {f"S{index}" for index in range(7)}, ("category", "precision", "coreset_ratio", "bank_precision", "power_mode")),
     )
     table_numbers = {"precision": 2, "bank_storage": "2b", "coreset": 3, "nn_backend": 4, "system": 6}
