@@ -9,19 +9,19 @@
 \emergencystretch=2em
 \journalname{Journal of Real-Time Image Processing}
 
-% Replace the three required metadata fields before submission.
-\newcommand{\AuthorNames}{AUTHOR NAME(S) REQUIRED}
-\newcommand{\AuthorAffiliation}{AFFILIATION, CITY, COUNTRY REQUIRED}
-\newcommand{\CorrespondingEmail}{CORRESPONDING EMAIL REQUIRED}
+\newcommand{\blankfield}[1]{\textit{#1: }\underline{\hspace{3.0cm}}}
 
 \begin{document}
 
 \title{When TensorRT Is Not the Bottleneck: End-to-End PatchCore Optimization on Jetson Orin Nano}
 \titlerunning{End-to-End PatchCore Optimization on Jetson Orin Nano}
-\author{\AuthorNames}
-\authorrunning{AUTHOR SURNAME REQUIRED}
-\institute{\AuthorNames{} \at \AuthorAffiliation{} \\
-\email{\CorrespondingEmail}}
+\author{Minwoo Lee \and HyeongTae Ahn}
+\authorrunning{Lee and Ahn}
+\institute{Minwoo Lee \at Department of Computer Engineering, Kumoh National
+Institute of Technology, Gumi, Republic of Korea
+\and HyeongTae Ahn (corresponding author) \at Department of Computer
+Engineering, Kumoh National Institute of Technology, Gumi, Republic of Korea \\
+\blankfield{E-mail}}
 \date{}
 \maketitle
 
@@ -402,11 +402,11 @@ bound. These results support complete-pipeline, hash-traced evaluation as a
 necessary basis for real-time claims in edge anomaly detection.
 
 \section*{Statements and Declarations}
-\paragraph{Funding} AUTHOR CONFIRMATION REQUIRED: state funding sources or ``The authors received no specific funding for this work.''
+\paragraph{Funding} \blankfield{Statement}
 
-\paragraph{Competing interests} AUTHOR CONFIRMATION REQUIRED: state any financial or non-financial interests or ``The authors have no relevant financial or non-financial interests to disclose.''
+\paragraph{Competing interests} \blankfield{Statement}
 
-\paragraph{Author contributions} AUTHOR CONFIRMATION REQUIRED: provide a CRediT-style contribution statement for every author.
+\paragraph{Author contributions} \blankfield{Statement}
 
 \paragraph{Data availability} MVTec AD is available from its original provider under its terms. Experiment-derived CSV files, manifests, configuration files, and analysis scripts supporting this article are available in the project repository at \url{https://github.com/minwoo1119/edge-anomaly-detection}. Large third-party dataset images and platform-specific TensorRT engines are not redistributed.
 

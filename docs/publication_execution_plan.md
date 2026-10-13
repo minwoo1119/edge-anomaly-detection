@@ -144,7 +144,8 @@ uses the official two-column `svjour3` class, compiles to eight pages, contains
 six vector figures, and passes `scripts/audit_jrtip_submission.py`: the
 231-word abstract, six keywords, embedded PDF fonts, citations, bibliography,
 mandatory declarations, page limit, and flat source archive all validate. The
-generated package is `results/submission_jrtip_20261013/`. Submission remains
-blocked only on author-supplied identity, affiliation, funding, competing-
-interest, contribution, and cover-letter confirmations; these values must not
-be inferred from experiment artifacts.
+generated package is `results/submission_jrtip_20261013/`. Minwoo Lee and
+corresponding author HyeongTae Ahn, both affiliated with the Department of
+Computer Engineering at Kumoh National Institute of Technology, are populated.
+Submission remains blocked only on the blank corresponding-email, funding,
+competing-interest, contribution, and cover-letter confirmation fields.

@@ -24,9 +24,9 @@ Checked against the official JRTIP submission guidelines on 2026-10-13.
 
 ## Required author metadata
 
-- [ ] Replace `AUTHOR NAME(S) REQUIRED` in `manuscript.tex`.
-- [ ] Replace `AUTHOR SURNAME` in the running author line.
-- [ ] Add every author's department, institution, city, and country.
+- [x] Add Minwoo Lee and corresponding author HyeongTae Ahn in author order.
+- [x] Set the running author line to `Lee and Ahn`.
+- [x] Add both authors' department, institution, city, and country.
 - [ ] Add the corresponding author's active email and optional 16-digit ORCID.
 - [ ] Confirm the funding statement.
 - [ ] Confirm the competing-interest statement.

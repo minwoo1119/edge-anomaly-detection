@@ -85,6 +85,7 @@ def main() -> None:
     ]
     missing_sections = [name for name in required_sections if name not in tex]
     placeholders = sorted(set(re.findall(r"[A-Z][A-Z ()/-]{3,}(?:REQUIRED|CONFIRMATION REQUIRED)", tex)))
+    blank_fields = re.findall(r"\\blankfield\{([^}]+)\}", tex)
 
     checks = {
         "abstract_150_to_250_words": 150 <= len(abstract_words) <= 250,
@@ -98,7 +99,7 @@ def main() -> None:
         "source_archive_complete": not missing_files,
     }
     report = {
-        "status": "PASS_WITH_AUTHOR_INPUT_PENDING" if all(checks.values()) and placeholders else "PASS" if all(checks.values()) else "FAIL",
+        "status": "PASS_WITH_AUTHOR_INPUT_PENDING" if all(checks.values()) and (placeholders or blank_fields) else "PASS" if all(checks.values()) else "FAIL",
         "checks": checks,
         "metrics": {
             "abstract_words": len(abstract_words),
@@ -112,6 +113,7 @@ def main() -> None:
         "missing_declaration_sections": missing_sections,
         "missing_source_files": missing_files,
         "author_input_placeholders": placeholders,
+        "blank_author_fields": blank_fields,
         "artifacts": {
             "manuscript_pdf": {"path": pdf_path.name, "sha256": sha256(pdf_path)},
             "source_archive": {"path": archive_path.name, "sha256": sha256(archive_path)},

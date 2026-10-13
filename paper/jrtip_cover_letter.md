@@ -1,14 +1,16 @@
 # Cover Letter — Journal of Real-Time Image Processing
 
-**Author action required before submission:** replace every bracketed field.
-
-[DATE]
+Date: ____________________
 
 Dear Editor-in-Chief,
 
 Please consider our manuscript, “When TensorRT Is Not the Bottleneck:
 End-to-End PatchCore Optimization on Jetson Orin Nano,” for publication as an
 Original Research Article in the *Journal of Real-Time Image Processing*.
+
+Minwoo Lee is an undergraduate student in the Department of Computer
+Engineering at Kumoh National Institute of Technology. HyeongTae Ahn is a
+professor in the same department and serves as the corresponding author.
 
 The manuscript addresses a specific real-time image-processing problem:
 memory-bank anomaly detectors can execute their neural feature extractor in a
@@ -34,15 +36,20 @@ The main contributions are:
 
 The work is original, has not been published previously, and is not under
 consideration elsewhere. All authors have approved the manuscript and agree to
-its submission. [CONFIRM OR REVISE THESE STATEMENTS.] The authors declare
-[COMPETING-INTEREST STATEMENT].
+its submission.
+
+Confirmation of the preceding statements: ________________________________
+
+Competing-interest statement: ____________________________________________
 
 Thank you for your consideration.
 
 Sincerely,
 
-[CORRESPONDING AUTHOR NAME]  
-[AFFILIATION]  
-[POSTAL ADDRESS]  
-[EMAIL]  
-[ORCID, IF AVAILABLE]
+HyeongTae Ahn, Professor and Corresponding Author<br>
+Department of Computer Engineering<br>
+Kumoh National Institute of Technology<br>
+Gumi, Republic of Korea<br>
+Postal address: ____________________<br>
+Email: ____________________<br>
+ORCID: ____________________
