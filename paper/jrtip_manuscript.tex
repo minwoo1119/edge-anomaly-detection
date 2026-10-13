@@ -1,0 +1,420 @@
+\RequirePackage{fix-cm}
+\documentclass[twocolumn]{svjour3}
+\smartqed
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{url}
+\usepackage{microtype}
+\emergencystretch=2em
+\journalname{Journal of Real-Time Image Processing}
+
+% Replace the three required metadata fields before submission.
+\newcommand{\AuthorNames}{AUTHOR NAME(S) REQUIRED}
+\newcommand{\AuthorAffiliation}{AFFILIATION, CITY, COUNTRY REQUIRED}
+\newcommand{\CorrespondingEmail}{CORRESPONDING EMAIL REQUIRED}
+
+\begin{document}
+
+\title{When TensorRT Is Not the Bottleneck: End-to-End PatchCore Optimization on Jetson Orin Nano}
+\titlerunning{End-to-End PatchCore Optimization on Jetson Orin Nano}
+\author{\AuthorNames}
+\authorrunning{AUTHOR SURNAME REQUIRED}
+\institute{\AuthorNames{} \at \AuthorAffiliation{} \\
+\email{\CorrespondingEmail}}
+\date{}
+\maketitle
+
+\begin{abstract}
+Memory-bank anomaly detectors can retain high unsupervised detection accuracy,
+but their edge deployment cost is easily understated when evaluation reports
+only the neural feature extractor. We implement PatchCore as a traced C++17,
+TensorRT, and CUDA runtime on an NVIDIA Jetson Orin Nano and measure the complete
+path: preprocessing, transfers, feature extraction, embedding layout, exact
+nearest-neighbor retrieval, postprocessing, power, and energy. On MVTec AD
+bottle, FP16 reduces feature extraction from 20.212 to 3.785 ms while reducing
+end-to-end latency by only 1.48\%, because retrieval dominates. A controlled
+backend ablation shows that asynchronous tiled CUDA search reduces retrieval by
+35.70$\times$ and end-to-end latency by 28.43$\times$ relative to CPU under a
+fixed data path. A staged system ablation reaches a 482.350 ms steady-state
+interval, while a five-ratio coreset study reduces latency from 992.520 to
+72.093 ms and bank storage from 250.799 to 12.539 MB with image AUROC 1.0.
+Across all 15 MVTec AD categories, the selected runtime obtains macro image and
+pixel AUROC of 0.983314 and 0.979761. A 4,000-frame, 33.94-minute run sustains
+1.964 images/s, with 517.845 ms interval p95, 63.906$^\circ$C maximum GPU
+temperature, and no performance degradation above a predefined 5\% bound.
+The results show why real-time edge anomaly detection must be evaluated as a
+complete retrieval system rather than as an accelerated backbone.
+\keywords{industrial anomaly detection \and PatchCore \and edge inference \and TensorRT \and CUDA \and real-time image processing}
+\end{abstract}
+
+\section{Introduction}\label{sec:introduction}
+Industrial inspection systems frequently have many defect-free examples but
+few representative examples of every failure mode. Unsupervised anomaly
+detection addresses this cold-start setting by learning nominal appearance and
+treating deviations as possible defects. MVTec AD provides 15 object and
+texture categories with image labels and pixel masks \cite{bergmann2019mvtec}.
+PatchCore is a strong representative method: it embeds local patches with a
+pretrained network, stores a coreset of nominal embeddings, and scores a test
+patch by its distance to the memory bank \cite{roth2022patchcore}.
+
+This accuracy comes with a deployment cost. Accelerating the convolutional
+backbone does not accelerate a memory-bank search that compares every test
+patch with thousands of high-dimensional nominal vectors. On a resource-bound
+edge platform, memory layout, transfer policy, buffer lifetime, and pipeline
+scheduling can matter more than the TensorRT engine. Engine-only timing can
+therefore misstate latency, energy, and deadline behavior.
+
+We study the complete PatchCore inference path on an NVIDIA Jetson Orin Nano.
+The contribution is a systems evaluation rather than a new anomaly score:
+\begin{enumerate}
+\item a hash-traced C++/TensorRT/CUDA runtime that reports stage latency,
+accuracy, power, energy, memory, and artifact lineage;
+\item controlled precision, coreset, exact-retrieval-backend, and S0--S6 data
+path ablations, including negative INT8 and transpose results;
+\item category-wise validation on all 15 MVTec AD categories with independently
+trained 10\% coresets; and
+\item a sustained thermal evaluation with separate input-cycle and response
+deadlines, avoiding an unrestricted use of the term real time.
+\end{enumerate}
+
+The key finding is that feature extraction becomes a few-millisecond stage,
+while exact retrieval remains hundreds of milliseconds. The optimized system
+meets a measured soft real-time envelope of one input every 550 ms and a 1.1 s
+response deadline for the bottle workload; it is not claimed to satisfy tighter
+inspection lines.
+
+\section{Related work}\label{sec:related}
+PatchCore selects a representative nominal memory bank and performs nearest-
+neighbor scoring in pretrained feature space \cite{roth2022patchcore}. Other
+families learn reconstruction and discrimination jointly, as in DRAEM
+\cite{zavrtanik2021draem}, or estimate feature likelihood with conditional
+normalizing flows, as in CFLOW-AD \cite{gudovskiy2022cflow}. N-Pad incorporates
+position and local-neighborhood information \cite{jang2023npad}. These works
+primarily change the detection model; our experiments hold the PatchCore
+representation fixed and isolate deployment costs.
+
+Efficiency-oriented methods demonstrate that model redesign can reach much
+lower latency. EfficientAD uses a lightweight student--teacher system and
+reports millisecond-level latency on a modern GPU \cite{batzner2024efficientad}.
+PaSTe targets efficient visual anomaly detection at the edge
+\cite{barusco2025paste}, and tiled ensembles reduce memory pressure for
+high-resolution inspection \cite{rolih2024tiled}. These are complementary to
+our question: when a memory-bank detector has already been selected, which
+parts of its embedded execution path determine the actual service rate?
+
+GPU similarity search is well established at datacenter scale
+\cite{johnson2021faissgpu}. Jetson-class unified-memory devices impose different
+capacity, power, and integration constraints. CUDA streams, pinned memory, and
+asynchronous global-to-shared transfer provide useful mechanisms
+\cite{nvidia2026cuda}; TensorRT supplies optimized lower-precision feature
+extraction \cite{nvidia2026tensorrt}. We treat vendor documentation as
+implementation guidance and derive all performance claims from device
+measurements.
+
+\section{Runtime design}\label{sec:runtime}
+\subsection{PatchCore execution path}
+For a $256\times256$ RGB input, WideResNet50-2 features from two intermediate
+levels are aligned and concatenated into
+$E\in\mathbb{R}^{1536\times32\times32}$. Flattening the spatial axes produces
+$Q\in\mathbb{R}^{1024\times1536}$. Given a nominal bank
+$B\in\mathbb{R}^{M\times1536}$, exact patch scores are
+\begin{equation}
+d_i=\min_{1\leq j\leq M}\lVert Q_i-B_j\rVert_2^2.
+\end{equation}
+The largest reweighted patch distance yields the image score; reshaped patch
+scores are interpolated and Gaussian-smoothed to form the anomaly map. The
+bottle 10\% bank has $M=21{,}401$ and occupies 125.396 MB in FP32.
+
+Figure~\ref{fig:pipeline} shows the measured path. Every output is traceable to
+the executable, configuration, engine, bank, source image, export manifest, and
+evaluation dataset by SHA-256. Accuracy and performance rows are joined only
+when executable, configuration, engine, and bank hashes agree.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{Fig1.pdf}
+\caption{Measured inference path. The reported end-to-end time includes every block, while TensorRT time covers feature extraction only}
+\label{fig:pipeline}
+\end{figure*}
+
+\subsection{Exact CUDA retrieval}
+The direct kernel assigns work to query--bank comparisons but performs poorly
+because reduction and memory reuse are limited. The warp variant cooperatively
+reduces distances within a warp. The tiled kernel stages bank-vector fragments
+in shared memory, and the asynchronous version overlaps tile movement with
+arithmetic where supported. Distances accumulate in FP32, and equal distances
+select the lowest bank index for deterministic behavior.
+
+TensorRT emits channel-major NCHW data, whereas distance evaluation benefits
+from patch-major queries. A transpose-assisted backend consumes NCHW output on
+device for the GPU-resident S5 path. We retain its S0 result as a negative
+control because S0 already passes through host patch-major conversion.
+
+\subsection{System stages and two deadlines}
+S0 uses transient device buffers and pageable synchronous copies. S1 retains
+device buffers; S2 adds pinned host staging; S3 uses asynchronous copies on the
+default stream; S4 introduces a dedicated non-blocking stream; S5 keeps the
+TensorRT output device-resident through retrieval; and S6 overlaps next-frame
+preprocessing with current-frame runtime work.
+
+S6 creates two timing quantities. The pipeline interval measures consecutive
+completed outputs and determines sustainable arrival rate. Completion time
+measures how long one frame remains in the two-frame pipeline. We report both
+and require both an input-cycle bound and a response bound.
+
+\section{Experimental method}\label{sec:method}
+\subsection{Platform and protocol}
+Table~\ref{tab:platform} lists the fixed platform. The Release executable
+targets compute capability 8.7. Unless stated otherwise, accuracy uses the
+complete test split and performance uses one fixed normal image, 50 warm-up
+iterations, 200 measured iterations, and three independent runs. We report
+stage means, per-run p95, between-run variation, power, and energy. Telemetry is
+sampled nominally every 100 ms. No threshold, coreset ratio, or precision choice
+is tuned on the test split.
+
+\begin{table}[t]
+\caption{Experimental platform}\label{tab:platform}
+\centering\small
+\begin{tabular}{ll}\hline
+Device & Jetson Orin Nano, 8 GB\\
+Power mode & MAXN\_SUPER\_ID2\\
+JetPack / L4T & 6.2.1 / 36.4.7\\
+CUDA / TensorRT & 12.6 / 10.3.0.30\\
+OpenCV / compiler & 4.8.0 / GCC 11.4\\
+Input / embedding & $256^2$ / $1536\times32\times32$\\
+\hline
+\end{tabular}
+\end{table}
+
+The implementation was first checked against exported PyTorch references at
+the preprocessed input, embedding, patch, nearest-neighbor, score, and anomaly-
+map levels. FP32 TensorRT was built with TF32 disabled for the reference check.
+CPU and CUDA search outputs agree within the recorded numerical tolerances.
+
+\subsection{Controlled ablations}
+The precision comparison fixes the 10\% FP32 bank and S5 retrieval path while
+varying FP32, FP16, and entropy-calibrated INT8 feature engines. Calibration
+uses 100 train-normal images. The bank-storage experiment serializes FP16 bank
+values deterministically from the FP32 export. The coreset experiment trains
+independent seed-42 bottle models at 1, 2.5, 5, 10, and 20\%; smaller banks are
+not truncations of one export.
+
+The retrieval experiment fixes FP16, the 10\% FP32 bank, S0, executable, and
+power mode while varying only six exact-search backends. The system experiment
+fixes the transpose-assisted backend while varying S0--S6. Multi-category
+evaluation uses one independently trained seed-42 10\% bank per category, the
+complete category test split, and three performance runs.
+
+\subsection{Sustained criterion}
+The final FP16/S6 path processes 4,000 measured bottle frames. Before analysis,
+we define operational degradation as a greater than 5\% increase in mean
+pipeline interval from the first to the last complete five-minute window. The
+evaluated soft real-time envelope is a 550 ms input cycle and a 1.1 s response
+deadline. This criterion observes performance and temperature; the available
+\texttt{tegrastats} format does not expose a direct hardware throttle flag.
+
+\section{Results}\label{sec:results}
+\subsection{Precision and coreset trade-offs}
+Table~\ref{tab:precision} shows that FP16 reduces TensorRT time by 81.3\% but
+reduces end-to-end latency by only 1.48\%. Exact retrieval still takes 467.057
+ms. INT8 changes total latency by only 4.94\% relative to FP16 while image AUROC
+falls to 0.688889; this entropy-PTQ path is rejected. The result does not imply
+that QAT or selective mixed precision must fail.
+
+\begin{table}[t]
+\caption{Controlled precision results on bottle}\label{tab:precision}
+\centering\scriptsize
+\begin{tabular}{lrrrr}\hline
+ & Image & Pixel & TRT & Total\\
+Precision & AUROC & AUROC & (ms) & (ms)\\\hline
+FP32 & 1.0000 & 0.9855 & 20.212 & 558.511\\
+FP16 & 1.0000 & 0.9855 & 3.785 & 550.245\\
+INT8 & 0.6889 & 0.7615 & 2.703 & 523.076\\
+\hline
+\end{tabular}
+\end{table}
+
+FP16 bank serialization halves the payload but leaves runtime bank memory at
+125.396 MB because the current loader expands values to FP32. It provides no
+supported speedup. Figure~\ref{fig:tradeoffs} also shows the coreset result.
+All five ratios retain image AUROC 1.0; pixel AUROC ranges only from 0.984961 to
+0.985500. Moving from 20\% to 1\% reduces mean latency from 992.520 to 72.093 ms,
+bank storage from 250.799 to 12.539 MB, and energy from 13.599 to 0.865 J/image.
+This frontier is specific to bottle and seed 42.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.96\textwidth]{Fig2.pdf}
+\caption{Precision and coreset trade-offs. INT8 loses substantial accuracy, whereas coreset size controls the dominant retrieval cost}
+\label{fig:tradeoffs}
+\end{figure*}
+
+\subsection{Retrieval backend ablation}
+All six backends preserve image/pixel AUROC of 1.0/0.985452. As summarized in
+Table~\ref{tab:backend} and Fig.~\ref{fig:backend}, direct CUDA is 3.28$\times$
+faster end to end than CPU. Warp reduction, tiling, and asynchronous tiling
+successively reduce total latency to 844.294, 613.777, and 510.285 ms. The best
+S0 backend delivers 35.70$\times$ NN and 28.43$\times$ end-to-end speedup over
+CPU, and reduces energy by 92.2\%.
+
+\begin{table}[t]
+\caption{Exact retrieval backend ablation (three runs)}\label{tab:backend}
+\centering\scriptsize
+\begin{tabular}{lrrr}\hline
+Backend & NN ms & Total ms & J/image\\\hline
+CPU & 14434.802 & 14505.975 & 94.681\\
+Direct CUDA & 4314.865 & 4420.934 & 70.795\\
+Warp & 735.978 & 844.294 & 9.541\\
+Tiled & 508.859 & 613.777 & 9.943\\
+Async tiled & 404.378 & 510.285 & 7.367\\
+Async tiled + transpose & 422.996 & 527.955 & 7.772\\
+\hline
+\end{tabular}
+\end{table}
+
+Transpose assistance is 3.46\% slower than asynchronous tiling in S0. This
+negative result matches the data path: S0 already performs host patch-major
+conversion, while transpose assistance was designed for device-resident NCHW.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{Fig3.pdf}
+\caption{Controlled nearest-neighbor backend latency. A logarithmic axis exposes the large CPU and direct-CUDA gap}
+\label{fig:backend}
+\end{figure*}
+
+\subsection{System-stage ablation}
+Every S0--S6 configuration retains image/pixel AUROC of 1.0/0.985455. Table
+\ref{tab:system} shows that persistent allocation alone changes little. Pinned
+staging at S2 gives the largest isolated pre-S5 single-frame reduction. S4 and
+S5 do not improve the mean under the already optimized retrieval kernel, so
+individual CUDA mechanisms are not presented as guaranteed gains.
+
+\begin{table}[t]
+\caption{S0--S6 system ablation}\label{tab:system}
+\centering\scriptsize
+\begin{tabular}{lrrr}\hline
+Stage & Completion ms & Interval ms & J/image\\\hline
+S0 & 548.333 & 548.333 & 7.121\\
+S1 & 547.476 & 547.476 & 7.111\\
+S2 & 502.427 & 502.427 & 6.577\\
+S3 & 501.316 & 501.316 & 6.526\\
+S4 & 508.594 & 508.594 & 7.195\\
+S5 & 503.152 & 503.152 & 7.462\\
+S6 & 964.625 & 482.350 & 6.426\\
+\hline
+\end{tabular}
+\end{table}
+
+S6 reduces the steady-state interval by 12.0\% and energy by 9.8\% relative to
+S0. Its completion time rises to 964.625 ms because two frames are in flight.
+Thus 482.350 ms is reported as a throughput interval, not response latency
+(Fig.~\ref{fig:system}).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{Fig4.pdf}
+\caption{System-stage completion time and pipeline interval. S6 improves service interval while increasing individual-frame completion time}
+\label{fig:system}
+\end{figure*}
+
+\subsection{Multi-category generality}
+The selected FP16/S5 runtime obtains macro image AUROC 0.983314 and macro pixel
+AUROC 0.979761 across all categories (Fig.~\ref{fig:categories}). Object and
+texture macro pairs are 0.978531/0.984692 and 0.992882/0.969898. Toothbrush has
+the lowest image AUROC (0.919444); wood has the lowest pixel AUROC (0.929994).
+These lower bounds prevent an unqualified near-perfect-accuracy claim.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{Fig5.pdf}
+\caption{Category-wise runtime accuracy and mean end-to-end latency for independently trained 10\% coresets}
+\label{fig:categories}
+\end{figure*}
+
+Category mean latency ranges from 164.050 ms for toothbrush (6,144 bank
+entries) to 906.637 ms for hazelnut (40,038 entries). Macro mean latency is
+574.334 ms, mean power is 14.043 W, and mean energy is 8.128 J/image. TensorRT
+remains near 3.3--3.8 ms, while retrieval ranges from 119.257 to 780.257 ms.
+The retrieval bottleneck therefore extends beyond bottle.
+
+\subsection{Sustained thermal and deadline behavior}
+The 4,000-frame run lasts 2,036.670 s. Mean pipeline interval is 509.168 ms and
+p95 is 517.845 ms (1.964 images/s). Mean completion time is 1,018.309 ms and
+p95 is 1,031.660 ms. These values meet the evaluated 550 ms input-cycle and
+1.1 s response bounds.
+
+The first complete five-minute interval mean is 514.355 ms and the last is
+507.128 ms, a $-1.405$\% change that passes the predefined 5\% degradation
+criterion. Maximum GPU temperature is 63.906$^\circ$C; mean/peak input power is
+14.014/15.939 W. Figure~\ref{fig:sustained} shows no progressive slowdown. One
+101\% GPU-utilization telemetry sample is treated as a reporting artifact, not
+as utilization beyond 100\%. Without a direct throttle flag, our conclusion is
+limited to observed performance and temperature stability.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{Fig6.pdf}
+\caption{Five-minute sustained-run windows. Mean and p95 interval remain stable as GPU temperature reaches steady state}
+\label{fig:sustained}
+\end{figure*}
+
+\clearpage
+
+\section{Discussion}\label{sec:discussion}
+The experiments separate four quantities often conflated in edge-AI reports.
+TensorRT engine time measures the backbone only. NN time measures the dominant
+memory-bank operator. Completion time measures one frame's response. Pipeline
+interval measures sustainable service rate under overlap. A configuration can
+improve one without improving the others, as S6 demonstrates.
+
+The coreset experiment reveals the strongest edge lever in this implementation.
+Kernel optimization reduces the cost per comparison, while coreset reduction
+reduces the number of comparisons and the stored state. The 1\% bottle bank
+dominates the tested larger banks under image AUROC, latency, storage, and
+energy, although its small pixel-AUROC difference and single-seed limitation
+must remain visible.
+
+The negative results are also consequential. Entropy INT8 damages accuracy
+without removing the retrieval bottleneck. FP16 bank serialization saves disk
+space but not runtime memory. A transpose specialization regresses in S0, and a
+dedicated stream does not automatically lower latency. Reporting only selected
+positive measurements would hide the boundaries of the contribution.
+
+The study is limited to one embedded platform, MVTec AD, one backbone, exact
+brute-force retrieval, and a single training seed per coreset condition. The
+soft real-time envelope is workload-specific. Approximate search, native FP16
+device banks with FP32 accumulation, additional seeds, other industrial
+datasets, and alternate platforms are important future work. Comparisons with
+model-efficient detectors should also use the same device, input size, power
+mode, and end-to-end measurement boundary.
+
+\section{Conclusion}\label{sec:conclusion}
+PatchCore deployment on Jetson Orin Nano is governed by the full memory-bank
+pipeline, not TensorRT in isolation. FP16 makes feature extraction fast but
+leaves exact retrieval dominant. Controlled CUDA kernel organization provides
+28.43$\times$ end-to-end acceleration over CPU under S0; coreset size then
+controls the remaining latency, storage, and energy. The selected system retains
+strong 15-category accuracy and sustains its stated bottle input and response
+deadlines for 33.94 minutes without performance degradation above the predefined
+bound. These results support complete-pipeline, hash-traced evaluation as a
+necessary basis for real-time claims in edge anomaly detection.
+
+\section*{Statements and Declarations}
+\paragraph{Funding} AUTHOR CONFIRMATION REQUIRED: state funding sources or ``The authors received no specific funding for this work.''
+
+\paragraph{Competing interests} AUTHOR CONFIRMATION REQUIRED: state any financial or non-financial interests or ``The authors have no relevant financial or non-financial interests to disclose.''
+
+\paragraph{Author contributions} AUTHOR CONFIRMATION REQUIRED: provide a CRediT-style contribution statement for every author.
+
+\paragraph{Data availability} MVTec AD is available from its original provider under its terms. Experiment-derived CSV files, manifests, configuration files, and analysis scripts supporting this article are available in the project repository at \url{https://github.com/minwoo1119/edge-anomaly-detection}. Large third-party dataset images and platform-specific TensorRT engines are not redistributed.
+
+\paragraph{Code availability} Runtime, experiment orchestration, validation, and paper-result generation code is available at \url{https://github.com/minwoo1119/edge-anomaly-detection}. The frozen evidence manifest records SHA-256 values for the reported artifacts.
+
+\paragraph{Use of generative AI} OpenAI Codex assisted with code inspection, experiment orchestration, result checking, and manuscript drafting. The authors are responsible for verifying the implementation, measurements, citations, interpretation, and final text.
+
+\bibliographystyle{spmpsci}
+\bibliography{references}
+
+\end{document}

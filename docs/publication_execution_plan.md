@@ -138,3 +138,13 @@ mode, software versions, run protocol, uncertainty and limitations.
 
 Submission readiness means Gates 1–6 are complete and
 `scripts/generate_paper_results.py` succeeds without `--allow-incomplete`.
+
+Gate 7 technical production is complete as of 2026-10-13. The JRTIP manuscript
+uses the official two-column `svjour3` class, compiles to eight pages, contains
+six vector figures, and passes `scripts/audit_jrtip_submission.py`: the
+231-word abstract, six keywords, embedded PDF fonts, citations, bibliography,
+mandatory declarations, page limit, and flat source archive all validate. The
+generated package is `results/submission_jrtip_20261013/`. Submission remains
+blocked only on author-supplied identity, affiliation, funding, competing-
+interest, contribution, and cover-letter confirmations; these values must not
+be inferred from experiment artifacts.
