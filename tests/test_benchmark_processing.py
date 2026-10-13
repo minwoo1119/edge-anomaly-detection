@@ -61,6 +61,9 @@ run_experiment_matrix = load_module(
 parse_tegrastats = load_module(
     "parse_tegrastats", ROOT / "jetson" / "scripts" / "parse_tegrastats.py"
 )
+analyze_sustained = load_module(
+    "analyze_sustained_run", ROOT / "jetson" / "scripts" / "analyze_sustained_run.py"
+)
 validate_artifact_chain = load_module(
     "validate_artifact_chain",
     ROOT / "jetson" / "scripts" / "validate_artifact_chain.py",
@@ -304,6 +307,25 @@ class PaperResultGenerationTest(unittest.TestCase):
         rows = [{"power_mode": "15W"}, {"power_mode": "MAXN"}]
         with self.assertRaises(RuntimeError):
             generate_paper_results.ensure_fixed(rows, ("power_mode",), "precision")
+
+
+class SustainedRunAnalysisTest(unittest.TestCase):
+    def test_latency_windows_follow_elapsed_time(self) -> None:
+        windows = analyze_sustained.latency_windows([500.0] * 12, 2.0)
+        self.assertEqual([window["frames"] for window in windows], [4, 4, 4])
+        self.assertTrue(all(window["interval_mean_ms"] == 500.0 for window in windows))
+
+    def test_tegrastats_telemetry_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tegrastats.log"
+            path.write_text(
+                "GR3D_FREQ 97% gpu@61.5C VDD_IN 14250mW/14000mW\n",
+                encoding="utf-8",
+            )
+            samples = analyze_sustained.telemetry(path)
+        self.assertEqual(samples[0]["power_w"], 14.25)
+        self.assertEqual(samples[0]["gpu_temperature_c"], 61.5)
+        self.assertEqual(samples[0]["gpu_utilization_pct"], 97.0)
 
 
 class CoresetAblationTest(unittest.TestCase):
