@@ -111,13 +111,23 @@ and pixel AUROC are 0.983314 and 0.979761. The canonical joined input is
 `results/metadata/paper_mvtec15_run01.json` and generated Table 5 under
 `results/paper_mvtec15_complete/`.
 
-## Gate 6 — Real-time claim and robustness
+## Gate 6 — Real-time claim and robustness (complete)
 
 Define the target inspection interval before using the term real-time. Measure
 p95 latency, a sustained run, temperature and throttling behavior. Current bottle
 throughput is approximately 2 FPS, so the supported claim must be tied to an
 inspection cycle of at least the observed p95 latency unless later experiments
 show otherwise.
+
+The final FP16/S6 bottle runtime completed 4,000 measured frames over 2,036.670
+seconds. Mean/p95 pipeline interval was 509.168/517.845 ms, mean/p95 completion
+time was 1018.309/1031.660 ms, and maximum GPU temperature was 63.906 C. The
+last complete five-minute window was 1.405% faster than the first, passing the
+predeclared 5% degradation bound. The supported soft real-time envelope is one
+input every 550 ms with a 1.1 s response deadline. Because `tegrastats` did not
+provide a hardware throttle flag, the conclusion is limited to observed
+temperature and performance stability. Canonical analysis is
+`results/metadata/paper_bottle_s6_sustained_analysis_01.json`.
 
 ## Gate 7 — Manuscript package
 

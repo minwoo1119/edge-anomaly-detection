@@ -21,12 +21,16 @@ def percentile(values: list[float], fraction: float) -> float:
     return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
 
 
-def benchmark_intervals(path: Path, run_id: str) -> list[float]:
+def benchmark_values(path: Path, run_id: str, field: str) -> list[float]:
     with path.open(newline="", encoding="utf-8") as stream:
         rows = [row for row in csv.DictReader(stream) if row["run_id"] == run_id]
     if not rows:
         raise RuntimeError(f"No benchmark rows for run_id={run_id}")
-    return [float(row["pipeline_interval_ms"]) for row in rows]
+    return [float(row[field]) for row in rows]
+
+
+def benchmark_intervals(path: Path, run_id: str) -> list[float]:
+    return benchmark_values(path, run_id, "pipeline_interval_ms")
 
 
 def telemetry(path: Path) -> list[dict[str, float]]:
@@ -114,6 +118,9 @@ def main() -> None:
         if output.exists():
             parser.error(f"refusing to overwrite output: {output}")
     intervals = benchmark_intervals(args.benchmark_csv, args.run_id)
+    completion_times = benchmark_values(args.benchmark_csv, args.run_id, "total_ms")
+    if len(completion_times) != len(intervals):
+        raise RuntimeError("Completion and interval sample counts differ")
     duration = sum(intervals) / 1000.0
     if duration < args.minimum_duration_seconds:
         raise RuntimeError(
@@ -147,6 +154,8 @@ def main() -> None:
         "overall_interval_mean_ms": sum(intervals) / len(intervals),
         "overall_interval_p95_ms": percentile(intervals, 0.95),
         "overall_fps": 1000.0 / (sum(intervals) / len(intervals)),
+        "overall_completion_mean_ms": sum(completion_times) / len(completion_times),
+        "overall_completion_p95_ms": percentile(completion_times, 0.95),
         "first_window_interval_mean_ms": first["interval_mean_ms"],
         "last_window_interval_mean_ms": last["interval_mean_ms"],
         "last_vs_first_interval_drift_pct": drift,

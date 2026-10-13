@@ -142,6 +142,11 @@ path, executable, and power mode. It varies only CPU, direct CUDA, warp, tiled,
 asynchronous tiled, and transpose-assisted asynchronous tiled exact search.
 This separates kernel organization from the S5 GPU-resident data path.
 
+Sustained validation uses the final S6 runtime for 4,000 measured frames. We
+predefine a greater than 5% increase from the first to last complete five-minute
+mean interval as evidence of operational performance degradation. The evaluated
+soft real-time envelope is a 550 ms input cycle and 1.1 s response deadline.
+
 ## 5. Results
 
 ### 5.1 Precision
@@ -231,6 +236,21 @@ a few milliseconds in every category, whereas exact NN retrieval ranges from
 119.257 to 780.257 ms, confirming that retrieval remains the system bottleneck
 beyond the bottle case.
 
+### 5.7 Sustained thermal behavior
+
+The final S6 runtime processes 4,000 frames over 2,036.670 seconds. Its mean
+and p95 pipeline intervals are 509.168 and 517.845 ms, corresponding to 1.964
+images/s. Mean and p95 frame completion times are 1,018.309 and 1,031.660 ms.
+It therefore meets the evaluated 550 ms input cycle and 1.1 s response deadline.
+
+The first complete five-minute window averages 514.355 ms and the last averages
+507.128 ms, a -1.405% change that passes the predeclared 5% degradation bound.
+Maximum GPU temperature is 63.906 C, with 14.014 W mean input power. These data
+show no sustained performance degradation during the run. Because the available
+`tegrastats` format does not report a hardware throttle flag, this conclusion is
+based on observed latency drift and temperature rather than a direct internal
+throttling signal.
+
 ## 6. Discussion
 
 The results separate three quantities that are often conflated. TensorRT engine
@@ -239,10 +259,10 @@ retrieval and postprocessing. Pipeline interval describes steady-state
 throughput when frames overlap. Likewise, a smaller serialized bank does not
 imply lower runtime memory when the loader expands its values.
 
-The current system processes roughly two bottle images per second. A real-time
-claim is valid only for an inspection process whose specified cycle and response
-deadline are consistent with measured p95 interval and completion time. The
-final paper will add a sustained thermal run and state the deadline explicitly.
+The current system processes roughly two bottle images per second. Its measured
+soft real-time envelope is one bottle input every 550 ms with a 1.1 s response
+deadline. This wording ties the claim to observed p95 interval and completion
+time and does not imply suitability for faster inspection lines.
 
 The study currently has three material limits: it covers one benchmark, one
 embedded platform, and exact brute-force retrieval. The coreset frontier is
@@ -262,5 +282,6 @@ show accuracy and runtime-memory limitations that must be reported explicitly.
 The 15-category results show that the selected configuration retains strong
 accuracy while retrieval remains dominant across diverse memory-bank sizes. The
 coreset experiment shows that large edge-runtime gains are possible with a
-small bank and negligible bottle accuracy change. The remaining publication
-gate is sustained thermal and deadline validation.
+small bank and negligible bottle accuracy change. A 33.94-minute sustained run
+meets the stated 550 ms input cycle and 1.1 s response deadline without measured
+performance degradation beyond the preregistered bound.
