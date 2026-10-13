@@ -65,7 +65,7 @@ After building the INT8 engine, the controlled S5 precision plan is
 `configs/paper_precision_matrix.json`. Run it with a dedicated accuracy CSV so
 earlier development evaluations cannot collide with final publication records.
 
-## Gate 4 — Retrieval and system ablation (system complete; retrieval pending)
+## Gate 4 — Retrieval and system ablation (complete)
 
 Use one fixed artifact chain. Compare CPU brute force, the direct CUDA baseline,
 warp, tiled, asynchronous tiled, and transpose-assisted asynchronous tiled
@@ -80,9 +80,18 @@ The controlled S0–S6 system matrix completed at commit `09f6523`. Every stage
 preserved image/pixel AUROC 1.0/0.985455. S2 pinned staging produced the largest
 single-frame reduction in the pre-S5 path (547.476 ms at S1 to 502.427 ms at
 S2). S6 reached a 482.350 ms steady-state interval and 6.426 J/image. Its
-964.625 ms single-frame completion time is reported separately. The isolated
-CPU/direct-CUDA/warp/tiled/async/transpose retrieval comparison remains before
-this gate is closed.
+964.625 ms single-frame completion time is reported separately.
+
+The controlled S0 retrieval matrix completed at commit `df3df81` with the same
+FP16 engine, 10% FP32 bank, executable, and power mode across all rows. CPU,
+direct CUDA, warp, tiled, asynchronous tiled, and transpose-assisted
+asynchronous tiled backends each have one full-test accuracy evaluation and
+three 50/200 performance runs. Asynchronous tiled search reduced NN latency
+from 14434.802 to 404.378 ms and total latency from 14505.975 to 510.285 ms
+relative to CPU, corresponding to 35.70x and 28.43x speedups. The S0 transpose
+variant measured 527.955 ms and is reported as a 3.46% regression. Canonical
+evidence is `results/processed/nn_backend_results.csv`, with Table 4 and Figure
+6 under `results/paper_mvtec15_complete/`.
 
 ## Gate 5 — Multi-category generality (complete)
 

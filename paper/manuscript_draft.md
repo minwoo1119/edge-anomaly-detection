@@ -26,6 +26,8 @@ retrieval pipeline and distinguish latency, throughput interval, storage, and
 runtime memory. A five-ratio bottle coreset study further shows that reducing
 the bank from 20% to 1% lowers mean latency from 992.520 to 72.093 ms and bank
 size from 250.799 to 12.539 MB while retaining image AUROC 1.0.
+Under a fixed S0 data path, asynchronous tiled CUDA retrieval reduces bottle
+exact-search latency by 35.70x and end-to-end latency by 28.43x relative to CPU.
 
 **Keywords:** industrial anomaly detection; PatchCore; edge inference; TensorRT;
 CUDA; nearest-neighbor search; Jetson Orin Nano
@@ -135,6 +137,11 @@ comparison fixes the FP16 engine, bank, retrieval kernel, and executable while
 varying S0–S6. FP16 bank storage is derived deterministically from the FP32
 export, then restored to FP32 by the current runtime loader.
 
+The retrieval-backend comparison fixes the FP16 engine, 10% FP32 bank, S0 data
+path, executable, and power mode. It varies only CPU, direct CUDA, warp, tiled,
+asynchronous tiled, and transpose-assisted asynchronous tiled exact search.
+This separates kernel organization from the S5 GPU-resident data path.
+
 ## 5. Results
 
 ### 5.1 Precision
@@ -191,10 +198,21 @@ dominates every larger tested ratio. The result is specific to bottle and seed
 42; the small pixel-level differences and independently trained lineage are
 retained rather than treating the banks as truncations of one export.
 
-### 5.5 Pending retrieval experiment
+### 5.5 Retrieval backend ablation
 
-**Retrieval backend ablation:** `[PLACEHOLDER: controlled CPU, direct CUDA,
-warp, tiled, asynchronous tiled, and transpose-assisted comparison]`.
+All six S0 backends preserve image/pixel AUROC of 1.0/0.985452. CPU exact
+search takes 14434.802 ms and produces a 14505.975 ms end-to-end time. Direct
+CUDA reduces these values to 4314.865 and 4420.934 ms. Warp reduction lowers
+total latency to 844.294 ms, tiling to 613.777 ms, and asynchronous tiling to
+510.285 ms. The best S0 backend therefore provides 35.70x NN and 28.43x
+end-to-end speedup over CPU, while energy falls from 94.681 to 7.367 J/image.
+
+Transpose-assisted asynchronous tiling measures 527.955 ms, 3.46% slower than
+asynchronous tiling in S0. This negative result is consistent with the S0 host
+layout conversion: the transpose specialization is intended for the S5
+device-resident NCHW path and does not improve this controlled host-mediated
+comparison. We retain both results and evaluate the data-path change separately
+in the system ablation.
 
 ### 5.6 Multi-category evaluation
 
@@ -244,5 +262,5 @@ show accuracy and runtime-memory limitations that must be reported explicitly.
 The 15-category results show that the selected configuration retains strong
 accuracy while retrieval remains dominant across diverse memory-bank sizes. The
 coreset experiment shows that large edge-runtime gains are possible with a
-small bank and negligible bottle accuracy change. The final claims will be
-frozen after the retrieval-backend and sustained-run gates are complete.
+small bank and negligible bottle accuracy change. The remaining publication
+gate is sustained thermal and deadline validation.
