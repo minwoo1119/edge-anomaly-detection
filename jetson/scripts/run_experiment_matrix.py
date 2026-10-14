@@ -77,6 +77,11 @@ def main() -> None:
     parser.add_argument("--runtime-accuracy-csv", type=Path, default=Path("results/csv/runtime_accuracy.csv"))
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--independent-runs", type=int, default=3)
+    parser.add_argument(
+        "--group-output-prefix",
+        default="",
+        help="Prefix merged group outputs so frozen result CSVs are not overwritten",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
@@ -85,6 +90,9 @@ def main() -> None:
         parser.error(f"plan does not exist: {args.plan}")
     if args.independent_runs < 3:
         parser.error("publication experiment requires at least three independent runs")
+    if any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+           for character in args.group_output_prefix):
+        parser.error("group output prefix contains unsupported characters")
     if args.manifest.exists() and not args.dry_run:
         parser.error(f"refusing to overwrite matrix manifest: {args.manifest}")
     repository = Path(__file__).resolve().parents[2]
@@ -166,7 +174,7 @@ def main() -> None:
 
     group_outputs: dict[str, str] = {}
     for group, summaries in summaries_by_group.items():
-        output = repository / "results" / "processed" / f"{group}_results.csv"
+        output = repository / "results" / "processed" / f"{args.group_output_prefix}{group}_results.csv"
         merge_command = [
             python,
             str(repository / "src" / "merge_experiment_results.py"),
