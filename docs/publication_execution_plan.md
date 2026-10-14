@@ -159,14 +159,17 @@ Submission is now also blocked on revision work packages R1--R6 in
 `docs/revision_experiment_plan.md`, in addition to the blank corresponding-email,
 funding, competing-interest, contribution, and cover-letter confirmation fields.
 
-## Gate 8 — Strong exact-GPU baselines (in progress)
+## Gate 8 — Strong exact-GPU baselines (partially complete)
 
 Add matched cuBLAS exact L2 and, where feasible on Jetson ARM64, FAISS GPU
 `GpuIndexFlatL2`. Separate GPU-resident operator time from S0 transfer-inclusive
 NN and end-to-end time. The cuBLAS runtime backend and environment probe are
-implemented. Its clean, three-run Bottle S0 measurement and full-test accuracy
-evaluation are complete at commit `920959d`; matched reruns of the other
-backends, profiling, and the FAISS build attempt remain pending.
+implemented. A clean matched matrix of CPU, five custom CUDA variants, and
+cuBLAS is complete at commit `d042e41`, with three performance repetitions and
+full-test accuracy evaluation per backend. Common executable and artifact
+hashes were verified. cuBLAS reaches 140.361 ms mean E2E latency, 3.73x faster
+than the best custom backend in this matrix. Nsight profiling and the FAISS
+ARM64 source-build attempt remain pending before Gate 8 is closed.
 
 ## Gates 9--13 — Required revision evidence (pending)
 

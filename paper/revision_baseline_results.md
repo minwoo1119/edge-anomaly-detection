@@ -1,35 +1,56 @@
 # Revision R1 Exact-GPU Baseline Results
 
-## cuBLAS implementation check
+## Controlled exact-retrieval matrix
 
-The FP32 cuBLAS exact-L2 backend was evaluated on the Bottle 10% FP32 memory
-bank with the FP16 feature engine and S0 data path at commit `920959d`.
+The CPU, five custom CUDA variants, and FP32 cuBLAS exact-L2 backend were
+evaluated on the Bottle 10% FP32 memory bank with the FP16 feature engine and
+S0 data path at commit `d042e41`. Every row uses the same clean Release binary,
+engine, memory bank, input image, evaluation dataset, 50 warm-up iterations,
+and 200 measured iterations. Each backend has three performance repetitions
+and one complete 83-image accuracy evaluation.
 
-- full 83-image test evaluation: image AUROC 1.000000, pixel AUROC 0.985454527;
-- three 50-warm-up/200-measured runs: NN 68.932 ms, E2E 140.104 ms,
-  E2E p95 151.923 ms, mean power 11.300 W, and energy 1.583 J/image
-  (means across runs);
-- run-level E2E means: 140.018, 139.662, and 140.631 ms;
-- run-level NN means: 69.033, 68.693, and 69.069 ms;
-- run-level CUDA memory deltas: 573.543, 529.504, and 553.113 MB
-  (mean 552.053 MB). Their spread is retained and the metric is not described
-  as peak GPU memory.
+| Backend | NN mean (ms) | E2E mean (ms) | E2E p95 (ms) | Power (W) | Energy (J/image) |
+|---|---:|---:|---:|---:|---:|
+| CPU | 14395.536 | 14463.545 | 14511.370 | 6.265 | 90.610 |
+| Direct CUDA | 4315.330 | 4422.354 | 4426.831 | 15.640 | 69.166 |
+| Warp CUDA | 736.410 | 843.809 | 846.982 | 10.951 | 9.241 |
+| Tiled CUDA | 523.054 | 625.913 | 670.998 | 16.165 | 10.116 |
+| Async tiled CUDA | 441.627 | 542.195 | 604.645 | 12.741 | 6.907 |
+| Async tiled + transpose | 422.215 | 524.181 | 528.375 | 15.335 | 8.062 |
+| cuBLAS | **69.221** | **140.361** | **153.092** | 11.153 | **1.565** |
+
+Values are means across the three repetitions; each run-level p95 is first
+computed over its 200 measurements and then averaged for the table. All seven
+backends retain image AUROC 1.000000 and pixel AUROC approximately 0.985455.
+The exact cuBLAS value is 0.985454527; the small last-digit differences among
+backends do not change the reported accuracy.
+
+Under this controlled configuration, cuBLAS is 103.05x faster than CPU and
+3.73x faster than the best custom CUDA variant in end-to-end mean latency. Its
+NN stage is 207.97x faster than CPU and 6.10x faster than the best custom CUDA
+variant. This changes the paper's interpretation: the custom kernels establish
+the optimization path and its failure modes, while cuBLAS is the strongest
+implemented exact-retrieval baseline and the current deployment candidate.
+
+The reported CUDA memory value is a before/after device-memory delta, not peak
+GPU allocation. Its three-run mean for cuBLAS is 456.772 MB and it must not be
+presented as a peak-memory result.
 
 Canonical local evidence:
 
-- `results/csv/runtime_accuracy_revision_r1_final.csv`;
-- `results/metadata/fp16_cublas_s0_evaluation_final01.json`;
-- `results/processed/r1-bottle-fp16-cublas-s0-final_run_summary.csv`.
+- `results/processed/revision_r1_d042_nn_backend_results.csv`;
+- `results/csv/runtime_accuracy_r1_d042.csv`;
+- `results/metadata/revision_nn_backend_r1_d042_matrix.json`;
+- `results/processed/revision_r1_d042_<backend>_run_summary.csv`.
 
-These performance numbers are **preliminary**. They use a clean cuBLAS-enabled
-binary, but the older CPU/custom-CUDA rows were produced by earlier executable
-hashes. The apparent 3.65x E2E advantage over the old async-tiled S0 mean and
-103.79x advantage over the old CPU S0 mean are useful for experiment planning,
-not a controlled publication comparison. R1 requires rerunning all available
-backends from the final executable SHA-256
-`5a206619d0ab9cf3c99eadfefd57728d706a8b3a3c26659fe1a68f483e82cba4`.
+The matrix uses executable SHA-256
+`a2d67ed12dc01c3d6e9958f5a72c8c476a1b59bd41b47b22b1cfa572ce8d5884`.
+The engine, memory-bank, image, and evaluation-dataset hashes each have exactly
+one unique value across all 21 performance rows. The seven configuration hashes
+differ only because each configuration selects a different retrieval backend.
 
 The environment probe found CUDA 12.6 and usable cuBLAS headers/libraries, but
 no installed FAISS headers, libraries, or Python GPU API. This establishes only
 that FAISS GPU is unavailable in the current environment. An ARM64 source-build
-attempt remains required before reporting it as infeasible.
+attempt remains required before reporting it as infeasible. Nsight profiling is
+also still required to explain the performance gap rather than only report it.
