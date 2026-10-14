@@ -136,6 +136,7 @@ def summarize_run(
         "bank_size_mb": first["bank_size_mb"],
         "engine_size_mb": first["engine_size_mb"],
         "host_memory_mb": first["host_memory_mb"],
+        "device_memory_delta_mb": first.get("device_memory_delta_mb", ""),
     }
     for field in TIMING_FIELDS:
         try:

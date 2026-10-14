@@ -42,7 +42,9 @@ Every comparison must join records by executable, config, engine, export
 manifest, memory bank, dataset split, and device-state hashes. Device, power
 mode, clocks, warm-up count, measured repetitions, input, and background load
 must match. Report mean, median, p95, p99, maximum, power, J/image, and peak
-device memory. Keep these boundaries separate:
+device memory. `device_memory_delta_mb` records the CUDA free-memory difference
+between pre-runtime initialization and the post-warm-up measured process; it is
+an allocated-memory delta, not a peak-memory claim. Keep these boundaries separate:
 
 1. GPU-resident retrieval operator time;
 2. query and result transfer time;

@@ -12,6 +12,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <cuda_runtime_api.h>
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -415,6 +417,11 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+        checkCuda(cudaFree(nullptr), "CUDA context initialization failed");
+        std::size_t initialDeviceFreeBytes = 0;
+        std::size_t initialDeviceTotalBytes = 0;
+        checkCuda(cudaMemGetInfo(&initialDeviceFreeBytes, &initialDeviceTotalBytes),
+                  "Initial CUDA memory query failed");
         const MemoryBank memoryBank = MemoryBank::loadNpy(config.memoryBankPath);
         TensorRTInferencer inferencer(config.enginePath, config.optimizationStageIndex());
         validateTensorShapes(inferencer, config, memoryBank);
@@ -511,6 +518,15 @@ int main(int argc, char* argv[]) {
                 }
             }
             printBenchmarkSummary(samples);
+            std::size_t measuredDeviceFreeBytes = 0;
+            std::size_t measuredDeviceTotalBytes = 0;
+            checkCuda(cudaMemGetInfo(&measuredDeviceFreeBytes, &measuredDeviceTotalBytes),
+                      "Final CUDA memory query failed");
+            if (measuredDeviceTotalBytes != initialDeviceTotalBytes) {
+                throw std::runtime_error("CUDA total memory changed during benchmark.");
+            }
+            const std::size_t deviceMemoryDeltaBytes = initialDeviceFreeBytes > measuredDeviceFreeBytes
+                ? initialDeviceFreeBytes - measuredDeviceFreeBytes : 0;
             writeBenchmarkCsv(
                 commandLine.benchmarkCsvPath,
                 config,
@@ -518,7 +534,8 @@ int main(int argc, char* argv[]) {
                 samples,
                 memoryBank.rows(),
                 memoryBank.sizeBytes(),
-                static_cast<std::size_t>(std::filesystem::file_size(config.enginePath))
+                static_cast<std::size_t>(std::filesystem::file_size(config.enginePath)),
+                deviceMemoryDeltaBytes
             );
         }
 

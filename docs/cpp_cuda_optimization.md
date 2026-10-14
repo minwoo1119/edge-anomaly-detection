@@ -278,6 +278,9 @@ Nsight Compute로 분석.
   구분하고, 필요하면 CUDA architecture 87을 사용한 소스 빌드 시도를 보존합니다.
 - 모든 backend는 같은 query/bank, FP32 거리 기준, power mode, warm-up 및 반복
   수를 사용하고 index agreement와 거리 오차를 함께 보고합니다.
+- benchmark CSV의 `device_memory_delta_mb`는 런타임 초기화 전과 warm-up 이후
+  CUDA free-memory 차이입니다. peak 값으로 부르지 않고 동일 조건의 상주
+  메모리 비교에 사용합니다.
 
 현재 `cublas` backend는 S0 비교용입니다. S5/S6 자체 CUDA 결과와 데이터 이동
 경계가 다르므로 직접적인 backend 우열 수치로 합치지 않습니다.

@@ -155,7 +155,8 @@ void writeBenchmarkCsv(
     const std::vector<StageTimings>& samples,
     std::size_t memoryBankEntries,
     std::size_t memoryBankBytes,
-    std::size_t engineBytes
+    std::size_t engineBytes,
+    std::size_t deviceMemoryDeltaBytes
 ) {
     const std::filesystem::path csvPath(path);
     if (csvPath.has_parent_path()) std::filesystem::create_directories(csvPath.parent_path());
@@ -168,7 +169,7 @@ void writeBenchmarkCsv(
         "engine_path,memory_bank_path,image_path,config_sha256,engine_sha256,memory_bank_sha256,"
         "image_sha256,executable_sha256,preprocess_ms,h2d_ms,trt_ms,d2h_ms,embedding_transform_ms,nn_ms,"
         "post_ms,total_ms,pipeline_interval_ms,fps,"
-        "bank_entries,bank_size_mb,engine_size_mb,host_memory_mb";
+        "bank_entries,bank_size_mb,engine_size_mb,host_memory_mb,device_memory_delta_mb";
     const bool writeHeader = !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
     if (!writeHeader) {
         std::ifstream existing(csvPath);
@@ -187,6 +188,8 @@ void writeBenchmarkCsv(
     const double bankMb = static_cast<double>(memoryBankBytes) / (1024.0 * 1024.0);
     const double engineMb = static_cast<double>(engineBytes) / (1024.0 * 1024.0);
     const double hostMemoryMb = peakResidentMemoryMb();
+    const double deviceMemoryDeltaMb =
+        static_cast<double>(deviceMemoryDeltaBytes) / (1024.0 * 1024.0);
     for (std::size_t index = 0; index < samples.size(); ++index) {
         const StageTimings& sample = samples[index];
         const double fps = sample.pipelineIntervalMs > 0.0
@@ -214,6 +217,6 @@ void writeBenchmarkCsv(
                << sample.nnMs << ',' << sample.postprocessMs << ',' << sample.totalMs << ','
                << sample.pipelineIntervalMs << ',' << fps << ',' << memoryBankEntries << ','
                << bankMb << ',' << engineMb << ','
-               << hostMemoryMb << '\n';
+               << hostMemoryMb << ',' << deviceMemoryDeltaMb << '\n';
     }
 }

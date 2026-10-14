@@ -49,5 +49,6 @@ void writeBenchmarkCsv(
     const std::vector<StageTimings>& samples,
     std::size_t memoryBankEntries,
     std::size_t memoryBankBytes,
-    std::size_t engineBytes
+    std::size_t engineBytes,
+    std::size_t deviceMemoryDeltaBytes
 );
