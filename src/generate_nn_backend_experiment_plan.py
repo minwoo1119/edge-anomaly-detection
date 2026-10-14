@@ -10,6 +10,7 @@ from pathlib import Path
 
 BACKENDS = (
     "cpu",
+    "cublas",
     "cuda",
     "cuda_warp",
     "cuda_tiled",

@@ -1,5 +1,8 @@
 # Cover Letter — Journal of Real-Time Image Processing
 
+> Pre-revision draft. Do not submit until the required technical revision in
+> `paper/jrtip_submission_checklist.md` is complete and all values are regenerated.
+
 Date: ____________________
 
 Dear Editor-in-Chief,
@@ -30,9 +33,10 @@ The main contributions are:
    over CPU under a fixed data path.
 3. Evaluation across all 15 MVTec AD categories, reaching macro image/pixel
    AUROC of 0.983314/0.979761 with category-specific memory banks.
-4. A 4,000-frame, 33.94-minute sustained test that separates a 550 ms input
-   cycle from a 1.1 s response deadline and reports p95 behavior, power,
-   temperature, and a predefined performance-degradation criterion.
+4. A 4,000-frame, 33.94-minute repeated-frame test that separates pipeline
+   interval from completion latency and reports p95 behavior, power,
+   temperature, and a predefined performance-degradation criterion. A revised
+   fixed-rate experiment will add p99/max, miss rate, backlog, and drops.
 
 The work is original, has not been published previously, and is not under
 consideration elsewhere. All authors have approved the manuscript and agree to

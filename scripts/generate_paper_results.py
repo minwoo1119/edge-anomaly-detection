@@ -365,7 +365,7 @@ def main() -> None:
         (
             "nn_backend",
             "nn_backend",
-            {"cpu", "cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_async", "cuda_tiled_async_transpose"},
+            {"cpu", "cublas", "cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_async", "cuda_tiled_async_transpose"},
             ("category", "precision", "coreset_ratio", "bank_precision", "optimization_stage", "power_mode"),
         ),
         ("system", "optimization_stage", {f"S{index}" for index in range(7)}, ("category", "precision", "coreset_ratio", "bank_precision", "power_mode")),

@@ -35,6 +35,18 @@ Checked against the official JRTIP submission guidelines on 2026-10-13.
 - [ ] Confirm that the work is not published or under review elsewhere and that
   every co-author and responsible institution approves submission.
 
+## Required technical revision before submission
+
+- [ ] Complete matched cuBLAS and available FAISS GPU exact-retrieval baselines.
+- [ ] Explain retrieval and S-stage behavior with archived Nsight evidence.
+- [ ] Run multi-category, multi-ratio, multi-seed validation-based selection and
+  one locked held-out evaluation.
+- [ ] Implement and measure a native FP16 device memory bank with FP32 accumulation.
+- [ ] Run fixed-rate arrivals and report p99/max, deadline misses, backlog, drops,
+  temperature, power, and sustained drift.
+- [ ] Regenerate every table, figure, claim audit, PDF, and source archive from
+  the revised frozen evidence set.
+
 ## Final production checks
 
 - [x] Compile with the official class and inspect the PDF for a maximum of 12

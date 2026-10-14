@@ -2,6 +2,12 @@
 
 Target: Journal of Real-Time Image Processing (JRTIP).
 
+> **Revision status (2026-10-14):** the package generated on 2026-10-13 is a
+> pre-revision draft, not a submission-ready package. External feedback requires
+> strong exact-GPU baselines, validation-based multi-seed bank selection,
+> native FP16 device storage, and fixed-rate deadline evidence. The binding
+> continuation plan is `docs/revision_experiment_plan.md`.
+
 The implementation optimization phase for the bottle 10% coreset is frozen at
 commit `e2a7d12`. Further kernel work requires evidence that it answers a paper
 research question. The publication work now follows these gates.
@@ -123,9 +129,11 @@ The final FP16/S6 bottle runtime completed 4,000 measured frames over 2,036.670
 seconds. Mean/p95 pipeline interval was 509.168/517.845 ms, mean/p95 completion
 time was 1018.309/1031.660 ms, and maximum GPU temperature was 63.906 C. The
 last complete five-minute window was 1.405% faster than the first, passing the
-predeclared 5% degradation bound. The supported soft real-time envelope is one
-input every 550 ms with a 1.1 s response deadline. Because `tegrastats` did not
-provide a hardware throttle flag, the conclusion is limited to observed
+predeclared 5% degradation bound. The p95 interval and completion values are
+below reference bounds of 550 ms and 1.1 s. Because this run did not impose
+timestamped fixed-rate arrivals or record p99/max, misses, backlog, and drops,
+it supports thermal and p95 stability only. Because `tegrastats` did not provide
+a hardware throttle flag, the conclusion is also limited to observed
 temperature and performance stability. Canonical analysis is
 `results/metadata/paper_bottle_s6_sustained_analysis_01.json`.
 
@@ -139,7 +147,7 @@ mode, software versions, run protocol, uncertainty and limitations.
 Submission readiness means Gates 1–6 are complete and
 `scripts/generate_paper_results.py` succeeds without `--allow-incomplete`.
 
-Gate 7 technical production is complete as of 2026-10-13. The JRTIP manuscript
+Gate 7 pre-revision technical production was complete as of 2026-10-13. The JRTIP manuscript
 uses the official two-column `svjour3` class, compiles to eight pages, contains
 six vector figures, and passes `scripts/audit_jrtip_submission.py`: the
 231-word abstract, six keywords, embedded PDF fonts, citations, bibliography,
@@ -147,5 +155,22 @@ mandatory declarations, page limit, and flat source archive all validate. The
 generated package is `results/submission_jrtip_20261013/`. Minwoo Lee and
 corresponding author HyeongTae Ahn, both affiliated with the Department of
 Computer Engineering at Kumoh National Institute of Technology, are populated.
-Submission remains blocked only on the blank corresponding-email, funding,
-competing-interest, contribution, and cover-letter confirmation fields.
+Submission is now also blocked on revision work packages R1--R6 in
+`docs/revision_experiment_plan.md`, in addition to the blank corresponding-email,
+funding, competing-interest, contribution, and cover-letter confirmation fields.
+
+## Gate 8 — Strong exact-GPU baselines (in progress)
+
+Add matched cuBLAS exact L2 and, where feasible on Jetson ARM64, FAISS GPU
+`GpuIndexFlatL2`. Separate GPU-resident operator time from S0 transfer-inclusive
+NN and end-to-end time. The cuBLAS runtime backend and environment probe are
+implemented; publication measurements are pending.
+
+## Gates 9--13 — Required revision evidence (pending)
+
+- Gate 9: Nsight Systems/Compute explanation of backend and S-stage behavior.
+- Gate 10: multi-category, multi-ratio, multi-seed validation-based selection.
+- Gate 11: native FP16 GPU bank with FP32 accumulation and memory verification.
+- Gate 12: locked selection followed by held-out test evaluation.
+- Gate 13: fixed-rate arrivals with p99/max, miss rate, backlog, drops, and
+  sustained thermal/power evidence.

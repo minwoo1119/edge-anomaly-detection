@@ -1,4 +1,5 @@
 #include "CudaNearestNeighborSearch.hpp"
+#include "CublasNearestNeighborSearch.hpp"
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
 #include "NpyWriter.hpp"
@@ -79,6 +80,20 @@ void testCpuCudaAgreement() {
             std::abs(cpuResult.distances[index] - cudaResult.distances[index]) < 1e-5F,
             "CPU/CUDA nearest distances differ"
         );
+    }
+}
+
+void testCpuCublasAgreement() {
+    const MemoryBank bank({0.0F, 0.0F, 2.0F, 4.0F, -1.0F, 1.0F}, 3, 2);
+    const std::vector<float> queries{0.0F, 0.0F, 3.0F, 4.0F, -2.0F, 1.0F};
+    const CpuBruteForceSearch cpu;
+    const CublasNearestNeighborSearch cublas(bank, 3);
+    const SearchResult expected = cpu.search(queries.data(), 3, 2, bank);
+    const SearchResult actual = cublas.search(queries.data(), 3, 2, bank);
+    require(actual.indices == expected.indices, "CPU/cuBLAS nearest indices differ");
+    for (std::size_t index = 0; index < expected.distances.size(); ++index) {
+        require(std::abs(actual.distances[index] - expected.distances[index]) < 1e-5F,
+                "CPU/cuBLAS nearest distances differ");
     }
 }
 
@@ -217,6 +232,7 @@ int main() {
         testPreprocessorChannelOrderAndNormalization();
         testPatchLayoutAndNearestNeighbor();
         testCpuCudaAgreement();
+        testCpuCublasAgreement();
         testCpuCudaTieBreaking();
         testWarpCudaSearch();
         testWarpCudaSearch(true);

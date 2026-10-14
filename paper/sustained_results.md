@@ -30,11 +30,12 @@ of an internal throttling signal. A reported 101% peak GPU-utilization sample is
 retained as a telemetry artifact and is not interpreted as utilization above
 100%.
 
-For the paper, the measured soft real-time operating envelope is defined as one
-input every 550 ms with a 1.1 s response deadline. The sustained p95 interval
-of 517.845 ms and p95 completion time of 1,031.660 ms meet these two bounds.
-This workload-specific envelope does not support an unrestricted real-time
-claim or a tighter industrial deadline.
+For the pre-revision paper, 550 ms interval and 1.1 s completion values were
+used as reference bounds. The sustained p95 values are below those bounds, but
+the run repeatedly processes one image without timestamped fixed-rate arrivals.
+It does not record p99, maximum, deadline misses, queue growth, or dropped
+frames. The evidence supports thermal and p95 stability, not all-frame deadline
+compliance. A fixed-rate simulation is required before making that claim.
 
 Canonical evidence:
 

@@ -266,16 +266,21 @@ Nsight Compute로 분석.
 
 ---
 
-## 10. FAISS
+## 10. 강한 exact GPU 기준선
 
-환경에서 안정 사용 가능 시:
-- development complexity
-- latency
-- memory
-- correctness
-- deployment overhead
+자체 CUDA 커널의 유효성은 CPU 대비 속도만으로 판단하지 않습니다.
 
-비교.
+- `cublas`: FP32 SGEMM으로 $B Q^T$를 계산하고 FP32 norm/reduction으로 exact
+  L2와 index를 구합니다. 동일 S0 경계에서 H2D/D2H 포함 NN 및 E2E 시간을
+  비교하고, Nsight에서 GPU 상주 연산 시간을 별도로 분리합니다.
+- FAISS GPU: `GpuIndexFlatL2`가 Jetson ARM64에서 사용 가능한지 먼저
+  `jetson/scripts/probe_gpu_baselines.py`로 기록합니다. 미설치와 빌드 불가능을
+  구분하고, 필요하면 CUDA architecture 87을 사용한 소스 빌드 시도를 보존합니다.
+- 모든 backend는 같은 query/bank, FP32 거리 기준, power mode, warm-up 및 반복
+  수를 사용하고 index agreement와 거리 오차를 함께 보고합니다.
+
+현재 `cublas` backend는 S0 비교용입니다. S5/S6 자체 CUDA 결과와 데이터 이동
+경계가 다르므로 직접적인 backend 우열 수치로 합치지 않습니다.
 
 ---
 

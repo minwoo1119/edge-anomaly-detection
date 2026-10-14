@@ -145,7 +145,8 @@ This separates kernel organization from the S5 GPU-resident data path.
 Sustained validation uses the final S6 runtime for 4,000 measured frames. We
 predefine a greater than 5% increase from the first to last complete five-minute
 mean interval as evidence of operational performance degradation. The evaluated
-soft real-time envelope is a 550 ms input cycle and 1.1 s response deadline.
+reference bounds are a 550 ms pipeline interval and a 1.1 s completion time.
+This repeated-frame trace is not a timestamped fixed-rate arrival experiment.
 
 ## 5. Results
 
@@ -241,7 +242,10 @@ beyond the bottle case.
 The final S6 runtime processes 4,000 frames over 2,036.670 seconds. Its mean
 and p95 pipeline intervals are 509.168 and 517.845 ms, corresponding to 1.964
 images/s. Mean and p95 frame completion times are 1,018.309 and 1,031.660 ms.
-It therefore meets the evaluated 550 ms input cycle and 1.1 s response deadline.
+Its p95 values are below the evaluated 550 ms interval and 1.1 s completion
+reference bounds. Because this repeated-frame run does not impose timestamped
+fixed-rate arrivals or record p99, maximum, misses, backlog, and drops, it does
+not establish that every frame meets a response deadline.
 
 The first complete five-minute window averages 514.355 ms and the last averages
 507.128 ms, a -1.405% change that passes the predeclared 5% degradation bound.
@@ -259,10 +263,10 @@ retrieval and postprocessing. Pipeline interval describes steady-state
 throughput when frames overlap. Likewise, a smaller serialized bank does not
 imply lower runtime memory when the loader expands its values.
 
-The current system processes roughly two bottle images per second. Its measured
-soft real-time envelope is one bottle input every 550 ms with a 1.1 s response
-deadline. This wording ties the claim to observed p95 interval and completion
-time and does not imply suitability for faster inspection lines.
+The current system processes roughly two bottle images per second. The observed
+p95 interval and completion time are below 550 ms and 1.1 s reference bounds,
+respectively. A fixed-rate service claim requires explicit arrival timestamps,
+p99/max latency, deadline-miss rate, backlog, and drop measurements.
 
 The study currently has three material limits: it covers one benchmark, one
 embedded platform, and exact brute-force retrieval. The coreset frontier is
@@ -282,6 +286,7 @@ show accuracy and runtime-memory limitations that must be reported explicitly.
 The 15-category results show that the selected configuration retains strong
 accuracy while retrieval remains dominant across diverse memory-bank sizes. The
 coreset experiment shows that large edge-runtime gains are possible with a
-small bank and negligible bottle accuracy change. A 33.94-minute sustained run
-meets the stated 550 ms input cycle and 1.1 s response deadline without measured
-performance degradation beyond the preregistered bound.
+small bank and negligible bottle accuracy change. A 33.94-minute repeated-frame
+run shows stable p95 interval and completion latency without measured
+performance degradation beyond the preregistered bound; fixed-rate deadline
+compliance remains untested.

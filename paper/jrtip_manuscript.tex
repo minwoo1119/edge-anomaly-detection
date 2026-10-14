@@ -82,16 +82,17 @@ retrieval backend, and the S0--S6 data path, including negative INT8 and
 transpose results;
 \item category-wise validation over all 15 MVTec AD categories using
 independently trained 10\% coresets; and
-\item a sustained thermal and timing evaluation that separates the input-cycle
-requirement from the per-frame response deadline.
+\item a sustained thermal and timing evaluation that separates pipeline interval
+from per-frame completion latency and identifies the evidence still needed for
+a fixed-rate deadline claim.
 \end{enumerate}
 
 The results show that feature extraction can be reduced to a few milliseconds
 while exact retrieval still requires hundreds of milliseconds. For the tested
-bottle workload, the optimized system satisfies the explicitly measured soft
-real-time envelope of one input every 550 ms and a 1.1 s response deadline.
-This bounded claim does not extend to tighter inspection cycles or untested
-workloads.
+bottle workload, the optimized system has p95 pipeline interval and completion
+latency below reference bounds of 550 ms and 1.1 s. The repeated-frame trace
+does not impose fixed-rate arrivals and therefore does not establish an
+all-frames deadline guarantee.
 
 \section{Related work}\label{sec:related}
 \subsection{Industrial anomaly detection}
@@ -239,10 +240,11 @@ runs.
 The final FP16/S6 path is evaluated over 4,000 measured bottle frames. Before
 analysis, operational degradation is defined as an increase of more than 5\%
 in mean pipeline interval between the first and last complete five-minute
-windows. The evaluated soft real-time envelope comprises a 550 ms input cycle
-and a 1.1 s response deadline. This criterion captures observed timing and
-temperature behavior; the available \texttt{tegrastats} output does not provide
-a direct hardware-throttling flag.
+windows. The evaluated reference bounds are a 550 ms pipeline interval and a
+1.1 s completion time. The repeated-frame run captures observed timing and
+temperature behavior, but does not record fixed-rate arrivals, p99, maximum,
+deadline misses, queue growth, or dropped frames. The available
+\texttt{tegrastats} output does not provide a direct hardware-throttling flag.
 
 \section{Results}\label{sec:results}
 \subsection{Precision and coreset trade-offs}
@@ -383,8 +385,11 @@ beyond the bottle category as well.
 \subsection{Sustained thermal and deadline behavior}
 The 4,000-frame run lasts 2,036.670 s. The mean pipeline interval is 509.168 ms
 and its p95 is 517.845 ms, corresponding to 1.964 images/s. Mean completion
-time is 1,018.309 ms, with a p95 of 1,031.660 ms. Both metrics remain within
-the evaluated 550 ms input-cycle and 1.1 s response bounds.
+time is 1,018.309 ms, with a p95 of 1,031.660 ms. Both p95 values are below
+the evaluated 550 ms interval and 1.1 s completion reference bounds. Because
+the run does not model timestamped fixed-rate arrivals or record p99, maximum,
+miss rate, backlog, and drops, it does not show that every frame meets a
+response deadline.
 
 The mean interval is 514.355 ms in the first complete five-minute window and
 507.128 ms in the last, a change of $-1.405$\% that remains within the
@@ -417,9 +422,10 @@ optimization can therefore improve throughput without improving response
 latency, and reporting only one of these metrics can reverse the apparent
 conclusion.
 
-This distinction also bounds the real-time claim. The sustained experiment
-supports a 550 ms arrival cycle and a 1.1 s response deadline for the tested
-FP16/S6 bottle workload in the specified power mode. It does not demonstrate
+This distinction also bounds the timing claim. The sustained experiment shows
+p95 values below 550 ms interval and 1.1 s completion references for the tested
+FP16/S6 bottle workload in the specified power mode. Fixed-rate deadline
+compliance remains untested. The experiment also does not demonstrate
 that every MVTec AD category meets those bounds: the S5 category means already
 span 164.050--906.637 ms. Nor does the absence of observed slowdown establish
 the absence of hardware throttling, because the available telemetry lacks a
@@ -457,8 +463,8 @@ surrounding data path; isolated use of lower precision, asynchronous execution,
 or a specialized layout is not sufficient evidence of an end-to-end gain.
 
 \subsection{Limitations and future work}
-The study is limited to one embedded platform, MVTec AD, one backbone, exact
-brute-force retrieval, and a single training seed for each coreset condition.
+The study is limited to one embedded platform, MVTec AD, one backbone, custom
+exact brute-force retrieval, and a single training seed for each coreset condition.
 The power and timing results are specific to the stated device configuration,
 and the soft real-time envelope is specific to the bottle workload. The
 sustained test establishes stability over 33.94 min rather than indefinite
@@ -466,10 +472,11 @@ operation, and the telemetry supports no direct conclusion about hardware
 throttling. These constraints limit both statistical and platform-level
 generalization.
 
-Future evaluation should examine additional seeds, industrial datasets,
-backbones, and edge platforms. Approximate retrieval and a native FP16 device
-bank with FP32 accumulation are also relevant extensions to the present exact
-FP32-bank path. Comparisons with model-efficient detectors should be conducted
+Future evaluation requires matched cuBLAS and, where feasible on Jetson ARM64,
+FAISS GPU exact-search baselines; validation-based multi-seed bank selection;
+a native FP16 device bank with FP32 accumulation; and fixed-rate arrivals with
+p99/max, misses, backlog, and drops. Additional industrial datasets, backbones,
+and edge platforms should then be examined. Comparisons with model-efficient detectors should be conducted
 on the same device and power mode, with matched input size and a common
 end-to-end measurement boundary, so that architectural efficiency is not
 confounded with experimental scope.
@@ -481,9 +488,10 @@ extraction to a few milliseconds but leaves exact retrieval dominant. Under
 the controlled S0 data path, CUDA kernel organization yields a 28.43$\times$
 end-to-end speedup over CPU search; coreset size then governs much of the
 remaining latency, storage, and energy. The selected runtime preserves strong
-aggregate accuracy across all 15 MVTec AD categories, while the sustained
-bottle experiment meets its stated input-cycle and response deadlines for
-33.94 min without exceeding the predefined degradation bound. Complete-
+aggregate accuracy across all 15 MVTec AD categories, while the 33.94 min
+repeated-frame bottle experiment shows stable p95 interval and completion
+latency without exceeding the predefined degradation bound. Fixed-rate
+deadline compliance remains to be tested. Complete-
 pipeline measurement, explicit deadline definitions, and traceable artifacts
 are therefore essential to support bounded real-time claims for memory-bank
 anomaly detection at the edge.

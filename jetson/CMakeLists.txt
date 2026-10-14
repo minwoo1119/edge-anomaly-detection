@@ -45,6 +45,7 @@ add_executable(
     src/Benchmark.cpp
     src/NpyWriter.cpp
     src/CudaBruteForceSearch.cu
+    src/CublasNearestNeighborSearch.cu
 )
 
 target_include_directories(
@@ -61,6 +62,7 @@ target_link_libraries(
     ${OpenCV_LIBS}
     ${TENSORRT_LIBRARY}
     CUDA::cudart
+    CUDA::cublas
     Threads::Threads
 )
 
@@ -111,6 +113,7 @@ if(BUILD_TESTING)
         src/Preprocessor.cpp
         src/RuntimeConfig.cpp
         src/CudaBruteForceSearch.cu
+        src/CublasNearestNeighborSearch.cu
     )
     target_include_directories(
         edge_runtime_tests
@@ -118,7 +121,7 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${OpenCV_INCLUDE_DIRS}
     )
-    target_link_libraries(edge_runtime_tests PRIVATE ${OpenCV_LIBS} CUDA::cudart)
+    target_link_libraries(edge_runtime_tests PRIVATE ${OpenCV_LIBS} CUDA::cudart CUDA::cublas)
     if(OpenMP_CXX_FOUND)
         target_link_libraries(edge_runtime_tests PRIVATE OpenMP::OpenMP_CXX)
         target_compile_definitions(edge_runtime_tests PRIVATE EDGE_HAS_OPENMP=1)

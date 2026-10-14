@@ -276,8 +276,8 @@ CPU baseline을 correctness reference로 유지합니다.
 
 ```text
 Custom CUDA
-or
-FAISS GPU
+cuBLAS exact L2
+FAISS GPU (Jetson ARM64에서 가능한 경우)
 ```
 
 ## Priority 6 — Runtime Optimization
