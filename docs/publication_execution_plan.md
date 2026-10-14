@@ -164,7 +164,9 @@ funding, competing-interest, contribution, and cover-letter confirmation fields.
 Add matched cuBLAS exact L2 and, where feasible on Jetson ARM64, FAISS GPU
 `GpuIndexFlatL2`. Separate GPU-resident operator time from S0 transfer-inclusive
 NN and end-to-end time. The cuBLAS runtime backend and environment probe are
-implemented; publication measurements are pending.
+implemented. Its clean, three-run Bottle S0 measurement and full-test accuracy
+evaluation are complete at commit `920959d`; matched reruns of the other
+backends, profiling, and the FAISS build attempt remain pending.
 
 ## Gates 9--13 — Required revision evidence (pending)
 
