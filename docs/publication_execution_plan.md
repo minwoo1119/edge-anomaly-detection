@@ -191,5 +191,6 @@ three-size profiling matrix remain under Gate 9.
 - Gate 12: locked selection followed by held-out test evaluation.
 - Gate 13: fixed-rate arrivals with p99/max, miss rate, backlog, drops, and
   sustained thermal/power evidence. The timestamped bounded-queue runtime,
-  tegrastats capture, and analysis pipeline are implemented; the clean short
-  sweep and predeclared sustained target runs remain pending.
+  tegrastats capture, and analysis pipeline are implemented. The clean short
+  sweep is complete, and the 550 ms/3,273-frame sustained acceptance criteria
+  are frozen in `paper/fixed_rate_results.md` before execution.
