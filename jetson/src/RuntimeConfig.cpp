@@ -133,8 +133,8 @@ RuntimeConfig RuntimeConfig::load(const std::string& path) {
         );
     }
     if (config.nnBackend != "cpu" && config.nnBackend != "openmp"
-        && config.nnBackend != "cublas" && config.nnBackend != "faiss_gpu" && config.nnBackend != "cuda" && config.nnBackend != "cuda_warp" && config.nnBackend != "cuda_tiled" && config.nnBackend != "cuda_tiled_cached" && config.nnBackend != "cuda_tiled_async" && config.nnBackend != "cuda_tiled_async_transpose") {
-        throw std::runtime_error("nn_backend must be cpu, openmp, cublas, faiss_gpu, cuda, cuda_warp, cuda_tiled, cuda_tiled_cached, cuda_tiled_async, or cuda_tiled_async_transpose.");
+        && config.nnBackend != "cublas" && config.nnBackend != "faiss_gpu" && config.nnBackend != "faiss_gpu_fp16" && config.nnBackend != "cuda" && config.nnBackend != "cuda_warp" && config.nnBackend != "cuda_tiled" && config.nnBackend != "cuda_tiled_cached" && config.nnBackend != "cuda_tiled_async" && config.nnBackend != "cuda_tiled_async_transpose") {
+        throw std::runtime_error("nn_backend must be cpu, openmp, cublas, faiss_gpu, faiss_gpu_fp16, cuda, cuda_warp, cuda_tiled, cuda_tiled_cached, cuda_tiled_async, or cuda_tiled_async_transpose.");
     }
     if (config.optimizationStage.size() != 2
         || config.optimizationStage[0] != 'S'

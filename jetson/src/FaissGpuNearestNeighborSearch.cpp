@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -15,10 +16,10 @@ struct FaissGpuNearestNeighborSearch::Impl {
     faiss::gpu::StandardGpuResources resources;
     std::unique_ptr<faiss::gpu::GpuIndexFlatL2> index;
 
-    explicit Impl(int dimensions) {
+    Impl(int dimensions, bool useFloat16) {
         faiss::gpu::GpuIndexFlatConfig config;
         config.device = 0;
-        config.useFloat16 = false;
+        config.useFloat16 = useFloat16;
         index = std::make_unique<faiss::gpu::GpuIndexFlatL2>(
             &resources, dimensions, config
         );
@@ -35,21 +36,32 @@ faiss::idx_t checkedIndex(std::size_t value, const char* name) {
 }  // namespace
 
 FaissGpuNearestNeighborSearch::FaissGpuNearestNeighborSearch(
-    const MemoryBank& memoryBank, std::size_t maximumQueries
+    const MemoryBank& memoryBank, std::size_t maximumQueries, bool useFloat16
 ) : rows_(memoryBank.rows()),
     dimensions_(memoryBank.dimensions()),
-    maximumQueries_(maximumQueries) {
+    maximumQueries_(maximumQueries),
+    deviceBankStorageBytes_(memoryBank.rows() * memoryBank.dimensions()
+                            * (useFloat16 ? sizeof(std::uint16_t) : sizeof(float))) {
     if (dimensions_ > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         throw std::overflow_error("Embedding dimensions exceed the FAISS int32 limit.");
     }
     if (rows_ == 0 || dimensions_ == 0 || maximumQueries_ == 0) {
         throw std::invalid_argument("FAISS GPU NN requires a non-empty bank and query capacity.");
     }
-    impl_ = std::make_unique<Impl>(static_cast<int>(dimensions_));
+    if (useFloat16 && !memoryBank.isFloat16Source()) {
+        throw std::invalid_argument(
+            "FAISS native FP16 storage requires a float16 memory-bank artifact."
+        );
+    }
+    impl_ = std::make_unique<Impl>(static_cast<int>(dimensions_), useFloat16);
     impl_->index->add(checkedIndex(rows_, "Memory-bank rows"), memoryBank.values().data());
 }
 
 FaissGpuNearestNeighborSearch::~FaissGpuNearestNeighborSearch() = default;
+
+std::size_t FaissGpuNearestNeighborSearch::deviceBankStorageBytes() const noexcept {
+    return deviceBankStorageBytes_;
+}
 
 SearchResult FaissGpuNearestNeighborSearch::search(
     const float* queries,

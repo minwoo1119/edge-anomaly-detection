@@ -7,7 +7,8 @@
 
 class FaissGpuNearestNeighborSearch final : public INearestNeighborSearch {
 public:
-    FaissGpuNearestNeighborSearch(const MemoryBank& memoryBank, std::size_t maximumQueries);
+    FaissGpuNearestNeighborSearch(const MemoryBank& memoryBank, std::size_t maximumQueries,
+                                  bool useFloat16 = false);
     ~FaissGpuNearestNeighborSearch() override;
 
     FaissGpuNearestNeighborSearch(const FaissGpuNearestNeighborSearch&) = delete;
@@ -20,10 +21,13 @@ public:
         const MemoryBank& memoryBank
     ) const override;
 
+    std::size_t deviceBankStorageBytes() const noexcept override;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
     std::size_t rows_{0};
     std::size_t dimensions_{0};
     std::size_t maximumQueries_{0};
+    std::size_t deviceBankStorageBytes_{0};
 };

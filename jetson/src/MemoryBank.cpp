@@ -140,12 +140,15 @@ MemoryBank MemoryBank::loadNpy(const std::string& path) {
     const std::size_t count = checkedElementCount(rows, dimensions);
 
     std::vector<float> values(count);
+    std::size_t sourceElementBytes = 0;
     if (dtype == "<f4" || dtype == "|f4" || dtype == "=f4") {
+        sourceElementBytes = sizeof(float);
         file.read(
             reinterpret_cast<char*>(values.data()),
             static_cast<std::streamsize>(count * sizeof(float))
         );
     } else if (dtype == "<f2" || dtype == "|f2" || dtype == "=f2") {
+        sourceElementBytes = sizeof(std::uint16_t);
         std::vector<std::uint16_t> halves(count);
         file.read(
             reinterpret_cast<char*>(halves.data()),
@@ -166,18 +169,24 @@ MemoryBank MemoryBank::loadNpy(const std::string& path) {
     if (!file) {
         throw std::runtime_error("Memory bank payload is truncated: " + path);
     }
-    return MemoryBank(std::move(values), rows, dimensions);
+    return MemoryBank(std::move(values), rows, dimensions, sourceElementBytes);
 }
 
 
 MemoryBank::MemoryBank(
     std::vector<float> values,
     std::size_t rows,
-    std::size_t dimensions
+    std::size_t dimensions,
+    std::size_t sourceElementBytes
 )
     : values_(std::move(values)),
       rows_(rows),
-      dimensions_(dimensions) {
+      dimensions_(dimensions),
+      sourceElementBytes_(sourceElementBytes) {
+    if (sourceElementBytes_ != sizeof(std::uint16_t)
+        && sourceElementBytes_ != sizeof(float)) {
+        throw std::invalid_argument("Memory bank source elements must be float16 or float32.");
+    }
     if (values_.size() != checkedElementCount(rows_, dimensions_)) {
         throw std::invalid_argument("Memory bank values do not match its shape.");
     }
@@ -214,4 +223,12 @@ std::size_t MemoryBank::dimensions() const noexcept {
 
 std::size_t MemoryBank::sizeBytes() const noexcept {
     return values_.size() * sizeof(float);
+}
+
+std::size_t MemoryBank::sourceSizeBytes() const noexcept {
+    return values_.size() * sourceElementBytes_;
+}
+
+bool MemoryBank::isFloat16Source() const noexcept {
+    return sourceElementBytes_ == sizeof(std::uint16_t);
 }

@@ -20,6 +20,10 @@ public:
         const MemoryBank& memoryBank
     ) const override;
 
+    std::size_t deviceBankStorageBytes() const noexcept override {
+        return bankBuffer_.sizeBytes();
+    }
+
 private:
     std::size_t rows_{0};
     std::size_t dimensions_{0};

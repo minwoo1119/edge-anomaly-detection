@@ -39,3 +39,11 @@ FAISS returns squared L2 distance; the adapter applies a clamped square root so
 its output matches the runtime's Euclidean-distance contract. S0 timing covers
 the synchronous host-query input, GPU search, and host result output. Nsight
 reports are required to separate its GPU-resident operator time and transfers.
+
+For native FP16 bank storage, use
+`configs/jetson_fp16_faiss_gpu_bank_fp16_s0.yaml`. The `faiss_gpu_fp16`
+backend requires a float16 `.npy` bank, sets `GpuIndexFlatConfig::useFloat16`,
+and records the resulting bank payload in the benchmark CSV as
+`device_bank_storage_mb`. The host loader retains FP32 values for the existing
+postprocessing interface, so this field measures the retrieval index payload,
+not total process or peak device memory.

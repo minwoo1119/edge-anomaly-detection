@@ -16,6 +16,8 @@ class INearestNeighborSearch {
 public:
     virtual ~INearestNeighborSearch() = default;
 
+    virtual std::size_t deviceBankStorageBytes() const noexcept { return 0; }
+
     virtual SearchResult search(
         const float* queries,
         std::size_t queryCount,

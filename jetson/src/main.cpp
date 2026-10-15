@@ -435,15 +435,18 @@ int main(int argc, char* argv[]) {
                 memoryBank,
                 static_cast<std::size_t>(outputShape[2] * outputShape[3])
             );
-        } else if (config.nnBackend == "faiss_gpu") {
+        } else if (config.nnBackend == "faiss_gpu"
+                   || config.nnBackend == "faiss_gpu_fp16") {
 #ifdef EDGE_HAS_FAISS_GPU
+            const bool nativeFloat16 = config.nnBackend == "faiss_gpu_fp16";
             nearestNeighborSearch = std::make_unique<FaissGpuNearestNeighborSearch>(
                 memoryBank,
-                static_cast<std::size_t>(outputShape[2] * outputShape[3])
+                static_cast<std::size_t>(outputShape[2] * outputShape[3]),
+                nativeFloat16
             );
 #else
             throw std::runtime_error(
-                "nn_backend=faiss_gpu requires EDGE_ENABLE_FAISS_GPU=ON at build time."
+                "FAISS GPU backends require EDGE_ENABLE_FAISS_GPU=ON at build time."
             );
 #endif
         } else if (config.nnBackend == "cuda" || config.nnBackend == "cuda_warp" || config.nnBackend == "cuda_tiled" || config.nnBackend == "cuda_tiled_cached" || config.nnBackend == "cuda_tiled_async" || config.nnBackend == "cuda_tiled_async_transpose") {
@@ -547,7 +550,8 @@ int main(int argc, char* argv[]) {
                 commandLine.benchmarkMetadata,
                 samples,
                 memoryBank.rows(),
-                memoryBank.sizeBytes(),
+                memoryBank.sourceSizeBytes(),
+                nearestNeighborSearch->deviceBankStorageBytes(),
                 static_cast<std::size_t>(std::filesystem::file_size(config.enginePath)),
                 deviceMemoryDeltaBytes
             );

@@ -20,6 +20,10 @@ public:
         const MemoryBank& memoryBank
     ) const override;
 
+    std::size_t deviceBankStorageBytes() const noexcept override {
+        return bankBuffer_.sizeBytes();
+    }
+
     DeviceNchwResult searchDeviceNchw(
         const float* deviceNchw,
         std::size_t channels,

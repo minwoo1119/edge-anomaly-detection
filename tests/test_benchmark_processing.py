@@ -160,6 +160,7 @@ class BenchmarkSummaryTest(unittest.TestCase):
                 "iteration": str(iteration),
                 "bank_entries": "100",
                 "bank_size_mb": "1.5",
+                "device_bank_storage_mb": "0.75",
                 "engine_size_mb": "2.5",
                 "host_memory_mb": "32.0",
                 "warmup_iterations": "50",
@@ -180,6 +181,7 @@ class BenchmarkSummaryTest(unittest.TestCase):
 
         self.assertEqual(summary["bank_entries"], "100")
         self.assertEqual(summary["bank_size_mb"], "1.5")
+        self.assertEqual(summary["device_bank_storage_mb"], "0.75")
         self.assertEqual(summary["host_memory_mb"], "32.0")
         self.assertEqual(summary["embedding_transform_share_pct"], 10.0)
         self.assertEqual(summary["nn_share_pct"], 10.0)

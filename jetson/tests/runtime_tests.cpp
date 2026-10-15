@@ -13,7 +13,9 @@
 #include <opencv2/core.hpp>
 
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -33,6 +35,35 @@ void testNpyRoundTrip() {
     std::filesystem::remove(path);
     require(bank.rows() == 2 && bank.dimensions() == 3, "NPY shape round-trip failed");
     require(bank.values() == values, "NPY values round-trip failed");
+    require(!bank.isFloat16Source() && bank.sourceSizeBytes() == bank.sizeBytes(),
+            "Float32 NPY storage metadata is incorrect");
+
+    const std::filesystem::path fp16Path =
+        std::filesystem::temp_directory_path() / "edge_runtime_test_fp16.npy";
+    std::string header = "{'descr': '<f2', 'fortran_order': False, 'shape': (2, 2), }";
+    const std::size_t padding = (64 - ((10 + header.size() + 1) % 64)) % 64;
+    header.append(padding, ' ');
+    header.push_back('\n');
+    const std::uint16_t headerLength = static_cast<std::uint16_t>(header.size());
+    const std::uint16_t halves[]{0x0000U, 0x3c00U, 0xc000U, 0x4300U};
+    {
+        std::ofstream output(fp16Path, std::ios::binary);
+        const unsigned char preamble[]{
+            0x93U, 'N', 'U', 'M', 'P', 'Y', 1U, 0U,
+            static_cast<unsigned char>(headerLength & 0xffU),
+            static_cast<unsigned char>(headerLength >> 8U)
+        };
+        output.write(reinterpret_cast<const char*>(preamble), sizeof(preamble));
+        output.write(header.data(), static_cast<std::streamsize>(header.size()));
+        output.write(reinterpret_cast<const char*>(halves), sizeof(halves));
+    }
+    const MemoryBank fp16Bank = MemoryBank::loadNpy(fp16Path.string());
+    std::filesystem::remove(fp16Path);
+    require(fp16Bank.isFloat16Source(), "Float16 NPY source dtype was not retained");
+    require(fp16Bank.sourceSizeBytes() * 2 == fp16Bank.sizeBytes(),
+            "Float16 NPY storage size is incorrect");
+    require(fp16Bank.values() == std::vector<float>({0.0F, 1.0F, -2.0F, 3.5F}),
+            "Float16 NPY values were decoded incorrectly");
 }
 
 void testPreprocessorChannelOrderAndNormalization() {
@@ -113,6 +144,21 @@ void testCpuFaissGpuAgreement() {
         require(std::abs(actual.distances[index] - expected.distances[index]) < 1e-5F,
                 "CPU/FAISS GPU nearest distances differ");
     }
+    require(faiss.deviceBankStorageBytes() == bank.sizeBytes(),
+            "FAISS FP32 bank storage accounting is incorrect");
+
+    const MemoryBank fp16Bank(
+        {0.0F, 0.0F, 2.0F, 4.0F, -1.0F, 1.0F}, 3, 2, sizeof(std::uint16_t)
+    );
+    const FaissGpuNearestNeighborSearch faissFp16(fp16Bank, 3, true);
+    const SearchResult fp16Actual = faissFp16.search(queries.data(), 3, 2, fp16Bank);
+    require(fp16Actual.indices == expected.indices, "CPU/FAISS FP16 nearest indices differ");
+    for (std::size_t index = 0; index < expected.distances.size(); ++index) {
+        require(std::abs(fp16Actual.distances[index] - expected.distances[index]) < 1e-3F,
+                "CPU/FAISS FP16 nearest distances differ");
+    }
+    require(faissFp16.deviceBankStorageBytes() == fp16Bank.sourceSizeBytes(),
+            "FAISS FP16 bank storage accounting is incorrect");
 }
 #endif
 

@@ -134,6 +134,7 @@ def summarize_run(
         "sample_count": len(rows),
         "bank_entries": first["bank_entries"],
         "bank_size_mb": first["bank_size_mb"],
+        "device_bank_storage_mb": first.get("device_bank_storage_mb", ""),
         "engine_size_mb": first["engine_size_mb"],
         "host_memory_mb": first["host_memory_mb"],
         "device_memory_delta_mb": first.get("device_memory_delta_mb", ""),
