@@ -175,11 +175,16 @@ accuracy; FAISS has a 1.96x larger device-memory delta. Gate 8's implementation
 and matched library comparison are complete. Nsight Compute counters and the
 three-size profiling matrix remain under Gate 9.
 
-## Gates 9--13 — Required revision evidence (pending)
+## Gates 9--13 — Required revision evidence
 
-- Gate 9: Nsight Systems/Compute explanation of backend and S-stage behavior.
+- Gate 9: Nsight Systems traces and the 1%/10%/20% bank-size matrix are
+  complete. Nsight Compute occupancy/bandwidth counters still require the
+  privileged commands recorded in each profiling directory.
 - Gate 10: multi-category, multi-ratio, multi-seed validation-based selection.
-- Gate 11: native FP16 GPU bank with FP32 accumulation and memory verification.
+- Gate 11: native FP16 FAISS GPU index storage is complete at commit `7040fd1`.
+  It halves the configured bank payload, preserves Bottle AUROC, and reduces
+  measured energy by 13.81%, while E2E mean increases by 2.70%. Evidence is in
+  `paper/bank_storage_results.md`.
 - Gate 12: locked selection followed by held-out test evaluation.
 - Gate 13: fixed-rate arrivals with p99/max, miss rate, backlog, drops, and
   sustained thermal/power evidence.
