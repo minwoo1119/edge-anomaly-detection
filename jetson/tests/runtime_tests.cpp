@@ -1,5 +1,8 @@
 #include "CudaNearestNeighborSearch.hpp"
 #include "CublasNearestNeighborSearch.hpp"
+#ifdef EDGE_HAS_FAISS_GPU
+#include "FaissGpuNearestNeighborSearch.hpp"
+#endif
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
 #include "NpyWriter.hpp"
@@ -96,6 +99,22 @@ void testCpuCublasAgreement() {
                 "CPU/cuBLAS nearest distances differ");
     }
 }
+
+#ifdef EDGE_HAS_FAISS_GPU
+void testCpuFaissGpuAgreement() {
+    const MemoryBank bank({0.0F, 0.0F, 2.0F, 4.0F, -1.0F, 1.0F}, 3, 2);
+    const std::vector<float> queries{0.0F, 0.0F, 3.0F, 4.0F, -2.0F, 1.0F};
+    const CpuBruteForceSearch cpu;
+    const FaissGpuNearestNeighborSearch faiss(bank, 3);
+    const SearchResult expected = cpu.search(queries.data(), 3, 2, bank);
+    const SearchResult actual = faiss.search(queries.data(), 3, 2, bank);
+    require(actual.indices == expected.indices, "CPU/FAISS GPU nearest indices differ");
+    for (std::size_t index = 0; index < expected.distances.size(); ++index) {
+        require(std::abs(actual.distances[index] - expected.distances[index]) < 1e-5F,
+                "CPU/FAISS GPU nearest distances differ");
+    }
+}
+#endif
 
 void testWarpCudaSearch(bool tiled = false, bool cacheQuery = false, bool doubleBuffer = false, std::size_t dimensions = 65, bool transpose = false) {
     // Tail dimensions, partial bank traversal, ties across warps, and NCHW input.
@@ -233,6 +252,9 @@ int main() {
         testPatchLayoutAndNearestNeighbor();
         testCpuCudaAgreement();
         testCpuCublasAgreement();
+#ifdef EDGE_HAS_FAISS_GPU
+        testCpuFaissGpuAgreement();
+#endif
         testCpuCudaTieBreaking();
         testWarpCudaSearch();
         testWarpCudaSearch(true);

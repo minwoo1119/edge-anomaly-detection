@@ -1,6 +1,9 @@
 #include "Benchmark.hpp"
 #include "CudaNearestNeighborSearch.hpp"
 #include "CublasNearestNeighborSearch.hpp"
+#ifdef EDGE_HAS_FAISS_GPU
+#include "FaissGpuNearestNeighborSearch.hpp"
+#endif
 #include "MemoryBank.hpp"
 #include "NearestNeighborSearch.hpp"
 #include "NpyWriter.hpp"
@@ -432,6 +435,17 @@ int main(int argc, char* argv[]) {
                 memoryBank,
                 static_cast<std::size_t>(outputShape[2] * outputShape[3])
             );
+        } else if (config.nnBackend == "faiss_gpu") {
+#ifdef EDGE_HAS_FAISS_GPU
+            nearestNeighborSearch = std::make_unique<FaissGpuNearestNeighborSearch>(
+                memoryBank,
+                static_cast<std::size_t>(outputShape[2] * outputShape[3])
+            );
+#else
+            throw std::runtime_error(
+                "nn_backend=faiss_gpu requires EDGE_ENABLE_FAISS_GPU=ON at build time."
+            );
+#endif
         } else if (config.nnBackend == "cuda" || config.nnBackend == "cuda_warp" || config.nnBackend == "cuda_tiled" || config.nnBackend == "cuda_tiled_cached" || config.nnBackend == "cuda_tiled_async" || config.nnBackend == "cuda_tiled_async_transpose") {
             nearestNeighborSearch = std::make_unique<CudaBruteForceSearch>(
                 memoryBank,

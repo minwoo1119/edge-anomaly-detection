@@ -9,11 +9,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 87)
+endif()
 
 find_package(OpenCV REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 find_package(OpenMP)
 find_package(Threads REQUIRED)
+
+option(EDGE_ENABLE_FAISS_GPU "Enable the optional FAISS GPU exact-L2 backend" OFF)
+set(FAISS_ROOT "" CACHE PATH "FAISS installation prefix")
+
+if(EDGE_ENABLE_FAISS_GPU)
+    find_path(FAISS_INCLUDE_DIR faiss/gpu/GpuIndexFlat.h HINTS ${FAISS_ROOT}/include REQUIRED)
+    find_library(FAISS_LIBRARY faiss HINTS ${FAISS_ROOT}/lib ${FAISS_ROOT}/lib64 REQUIRED)
+endif()
 
 find_path(
     TENSORRT_INCLUDE_DIR
@@ -47,6 +58,13 @@ add_executable(
     src/CudaBruteForceSearch.cu
     src/CublasNearestNeighborSearch.cu
 )
+
+if(EDGE_ENABLE_FAISS_GPU)
+    target_sources(edge_anomaly PRIVATE src/FaissGpuNearestNeighborSearch.cpp)
+    target_include_directories(edge_anomaly PRIVATE ${FAISS_INCLUDE_DIR})
+    target_link_libraries(edge_anomaly PRIVATE ${FAISS_LIBRARY})
+    target_compile_definitions(edge_anomaly PRIVATE EDGE_HAS_FAISS_GPU=1)
+endif()
 
 target_include_directories(
     edge_anomaly
@@ -115,6 +133,12 @@ if(BUILD_TESTING)
         src/CudaBruteForceSearch.cu
         src/CublasNearestNeighborSearch.cu
     )
+    if(EDGE_ENABLE_FAISS_GPU)
+        target_sources(edge_runtime_tests PRIVATE src/FaissGpuNearestNeighborSearch.cpp)
+        target_include_directories(edge_runtime_tests PRIVATE ${FAISS_INCLUDE_DIR})
+        target_link_libraries(edge_runtime_tests PRIVATE ${FAISS_LIBRARY})
+        target_compile_definitions(edge_runtime_tests PRIVATE EDGE_HAS_FAISS_GPU=1)
+    endif()
     target_include_directories(
         edge_runtime_tests
         PRIVATE

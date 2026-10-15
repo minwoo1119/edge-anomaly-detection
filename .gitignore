@@ -21,6 +21,7 @@ outputs/
 
 # Local Jetson build, experiment results, and model backups
 jetson/build/
+jetson/build_*/
 results/
 models_before_colab_*/
 artifacts/

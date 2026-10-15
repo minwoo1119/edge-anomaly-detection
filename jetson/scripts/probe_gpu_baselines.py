@@ -49,20 +49,25 @@ def probe_python_faiss() -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--faiss-root", type=Path)
     args = parser.parse_args()
+
+    faiss_roots = [] if args.faiss_root is None else [args.faiss_root.resolve()]
 
     faiss_headers = existing([
         "/usr/include/faiss/IndexFlat.h",
         "/usr/local/include/faiss/IndexFlat.h",
         "/usr/include/faiss/gpu/GpuIndexFlat.h",
         "/usr/local/include/faiss/gpu/GpuIndexFlat.h",
-    ])
+    ] + [str(root / "include/faiss/IndexFlat.h") for root in faiss_roots]
+      + [str(root / "include/faiss/gpu/GpuIndexFlat.h") for root in faiss_roots])
     faiss_libraries = existing([
         "/usr/lib/aarch64-linux-gnu/libfaiss.so",
         "/usr/local/lib/libfaiss.so",
         "/usr/lib/aarch64-linux-gnu/libfaiss_gpu.so",
         "/usr/local/lib/libfaiss_gpu.so",
-    ])
+    ] + [str(root / "lib/libfaiss.so") for root in faiss_roots]
+      + [str(root / "lib64/libfaiss.so") for root in faiss_roots])
     nvcc = command_output(["nvcc", "--version"])
     cublas_headers = existing([
         "/usr/local/cuda/include/cublas_v2.h",
@@ -92,6 +97,7 @@ def main() -> None:
             "runtime_backend": "cublas",
         },
         "faiss": {
+            "requested_roots": [str(root) for root in faiss_roots],
             "headers": faiss_headers,
             "libraries": faiss_libraries,
             "native_cpu_api_detected": native_faiss,
