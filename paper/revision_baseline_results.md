@@ -49,8 +49,34 @@ The engine, memory-bank, image, and evaluation-dataset hashes each have exactly
 one unique value across all 21 performance rows. The seven configuration hashes
 differ only because each configuration selects a different retrieval backend.
 
-The environment probe found CUDA 12.6 and usable cuBLAS headers/libraries, but
-no installed FAISS headers, libraries, or Python GPU API. This establishes only
-that FAISS GPU is unavailable in the current environment. An ARM64 source-build
-attempt remains required before reporting it as infeasible. Nsight profiling is
-also still required to explain the performance gap rather than only report it.
+## Matched FAISS GPU and cuBLAS result
+
+FAISS v1.15.1 was built from source on aarch64 with CUDA 12.6 and compute
+architecture 87. JetPack's CMake 3.22.1 was too old, so CMake 3.31.6 was
+installed inside the ignored artifact tree without replacing the system tool.
+The resulting `GpuIndexFlatL2` backend and cuBLAS backend were then rebuilt into
+the same clean executable at commit `63bb4ec` and evaluated with common engine,
+bank, image, and dataset hashes.
+
+| Backend | Image AUROC | Pixel AUROC | NN mean (ms) | E2E mean (ms) | E2E p95 (ms) | Energy (J/image) | Device-memory delta (MB) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| cuBLAS | 1.000000 | 0.985454527 | 68.584 | **138.594** | **151.351** | **1.573** | **553.428** |
+| FAISS GPU | 1.000000 | 0.985454528 | 68.728 | 139.385 | 152.588 | 1.599 | 1084.787 |
+
+Both rows are means over three 50/200 runs, apart from AUROC, which uses the
+complete 83-image test set. FAISS is 0.57% slower in E2E mean latency, a small
+difference relative to run variation, and its device-memory delta is 1.96x the
+cuBLAS value. This delta is not a peak-memory metric. The evidence supports
+performance parity for the tested exact search while favoring the simpler
+cuBLAS backend on measured memory use.
+
+Canonical local evidence:
+
+- `results/processed/r2_exact_gpu_libraries_results.csv`;
+- `results/metadata/faiss_gpu_build_1.15.1.json`;
+- `results/metadata/fp16_faiss_gpu_evaluation_r1.json`;
+- `results/metadata/fp16_cublas_evaluation_r2.json`.
+
+Nsight Systems profiles identify SGEMM as the dominant retrieval kernel for
+both implementations. Nsight Compute hardware-counter collection still
+requires a privileged `sudo ncu` run on the Jetson.

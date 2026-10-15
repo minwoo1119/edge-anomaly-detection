@@ -168,8 +168,12 @@ implemented. A clean matched matrix of CPU, five custom CUDA variants, and
 cuBLAS is complete at commit `d042e41`, with three performance repetitions and
 full-test accuracy evaluation per backend. Common executable and artifact
 hashes were verified. cuBLAS reaches 140.361 ms mean E2E latency, 3.73x faster
-than the best custom backend in this matrix. Nsight profiling and the FAISS
-ARM64 source-build attempt remain pending before Gate 8 is closed.
+than the best custom backend in this matrix. FAISS v1.15.1 was subsequently
+built successfully on ARM64/CUDA 12.6 and integrated as `faiss_gpu`. At commit
+`63bb4ec`, matched cuBLAS/FAISS means are 138.594/139.385 ms with equivalent
+accuracy; FAISS has a 1.96x larger device-memory delta. Gate 8's implementation
+and matched library comparison are complete. Nsight Compute counters and the
+three-size profiling matrix remain under Gate 9.
 
 ## Gates 9--13 — Required revision evidence (pending)
 
