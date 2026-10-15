@@ -42,9 +42,39 @@ and are consistent with its larger benchmark device-memory delta. They do not
 measure peak memory. Warmed latency shows that allocation occurs outside the
 steady search loop and does not materially separate the two exact libraries.
 
+## Bank-size scaling
+
+The same profiling protocol was repeated with independently generated Bottle
+1%, 10%, and 20% banks. The embedding dimension and query count remain 1,536
+and 1,024. Within every bank size, the two backends use the same clean
+executable, engine, bank, and image hashes.
+
+| Bank ratio | Rows | Backend | Cold retrieval kernels (ms) | Warm NN mean (ms) | Warm E2E mean (ms) | Energy (J/image) |
+|---:|---:|---|---:|---:|---:|---:|
+| 1% | 2,140 | cuBLAS | 21.176 | 20.554 | 67.679 | 0.437 |
+| 1% | 2,140 | FAISS GPU | 31.295 | **19.509** | **65.262** | **0.430** |
+| 10% | 21,401 | cuBLAS | **116.001** | **68.584** | **138.594** | **1.573** |
+| 10% | 21,401 | FAISS GPU | 137.356 | 68.728 | 139.385 | 1.599 |
+| 20% | 42,803 | cuBLAS | **185.973** | 131.635 | 247.137 | 3.002 |
+| 20% | 42,803 | FAISS GPU | 197.617 | **118.878** | **236.037** | **2.725** |
+
+Cold profiling exaggerates the library gap, especially for the small bank:
+FAISS's extra launches and initialization cost are included once, while the
+warmed loop amortizes them. Warmed 1% and 10% latency is effectively close;
+at 20%, FAISS reduces NN mean by 9.69% and E2E mean by 4.49% relative to the
+cuBLAS adapter. The result supports a bank-size-dependent backend choice rather
+than a universal winner.
+
+The measured device-memory delta is not monotonic for cuBLAS across these
+runs, confirming that it cannot serve as a bank-scaling or peak-memory metric.
+R4 must record deterministic allocation bytes in the implementations and add
+an external peak-memory corroboration before making memory-scaling claims.
+
 Local reports:
 
 - `results/profiling/r2_cublas_s0_63bb4ec/timeline.nsys-rep`;
 - `results/profiling/r2_cublas_s0_63bb4ec/nsys_stats.csv`;
 - `results/profiling/r2_faiss_gpu_s0_63bb4ec/timeline.nsys-rep`;
-- `results/profiling/r2_faiss_gpu_s0_63bb4ec/nsys_stats.csv`.
+- `results/profiling/r2_faiss_gpu_s0_63bb4ec/nsys_stats.csv`;
+- `results/processed/r2_bank_size_nsys.csv`;
+- `results/processed/r2_bank_size_benchmark.csv`.
