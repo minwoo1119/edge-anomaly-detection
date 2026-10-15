@@ -55,6 +55,9 @@ generate_nn_backend_plan = load_module(
 generate_system_configs = load_module(
     "generate_system_configs", ROOT / "src" / "generate_system_configs.py"
 )
+create_mvtec_split = load_module(
+    "create_mvtec_dev_test_split", ROOT / "src" / "create_mvtec_dev_test_split.py"
+)
 run_experiment_matrix = load_module(
     "run_experiment_matrix", ROOT / "jetson" / "scripts" / "run_experiment_matrix.py"
 )
@@ -147,6 +150,65 @@ class ColabPipelineTest(unittest.TestCase):
             (category / "ground_truth").rmdir()
             with self.assertRaises(RuntimeError):
                 cache_mvtec_dataset.validate_category(category)
+
+    def test_coreset_resume_marker_verifies_bundle_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            deployment = root / "deployment"
+            deployment.mkdir()
+            bundle = deployment / "bottle_artifacts.zip"
+            bundle.write_bytes(b"bundle")
+            bundle.with_suffix(".zip.sha256").write_text("checksum")
+            import json
+            marker = {
+                "category": "bottle",
+                "coreset_ratio": 0.1,
+                "seed": 42,
+                "bundle_sha256": run_coreset_ablation.sha256(bundle),
+            }
+            (root / "COMPLETE.json").write_text(json.dumps(marker))
+            self.assertTrue(run_coreset_ablation.completed_variant(root, "bottle", 0.1, 42))
+            bundle.write_bytes(b"changed")
+            self.assertFalse(run_coreset_ablation.completed_variant(root, "bottle", 0.1, 42))
+
+
+class MvtecDevelopmentSplitTest(unittest.TestCase):
+    def test_split_is_deterministic_stratified_and_hash_verified(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            dataset = Path(directory) / "MVTecAD"
+            category = dataset / "bottle"
+            for defect in ("good", "broken"):
+                (category / "test" / defect).mkdir(parents=True)
+                if defect != "good":
+                    (category / "ground_truth" / defect).mkdir(parents=True)
+                for index in range(4):
+                    (category / "test" / defect / f"{index:03d}.png").write_bytes(
+                        f"{defect}-{index}".encode()
+                    )
+                    if defect != "good":
+                        (category / "ground_truth" / defect / f"{index:03d}_mask.png").write_bytes(
+                            f"mask-{index}".encode()
+                        )
+
+            first = create_mvtec_split.split_category(dataset, "bottle", 0.5, 17)
+            second = create_mvtec_split.split_category(dataset, "bottle", 0.5, 17)
+            self.assertEqual(first["records_sha256"], second["records_sha256"])
+            self.assertEqual(first["counts_by_defect_type"]["good"], {"development": 2, "heldout": 2})
+            self.assertEqual(first["counts_by_defect_type"]["broken"], {"development": 2, "heldout": 2})
+
+            manifest = Path(directory) / "split.json"
+            import json
+            manifest.write_text(json.dumps(first), encoding="utf-8")
+            selected, records = evaluate_runtime.images_from_split_manifest(
+                manifest, "development", category, "bottle"
+            )
+            self.assertEqual(len(selected), 4)
+            self.assertEqual(len(records), 8)
+            selected[0].write_bytes(b"changed")
+            with self.assertRaises(RuntimeError):
+                evaluate_runtime.images_from_split_manifest(
+                    manifest, "development", category, "bottle"
+                )
 
 
 class BenchmarkSummaryTest(unittest.TestCase):

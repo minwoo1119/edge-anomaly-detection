@@ -109,6 +109,37 @@ def write_csv_row(path: Path, row: dict[str, object], unique_fields: tuple[str, 
         writer.writerow(row)
 
 
+def images_from_split_manifest(
+    manifest_path: Path, split_name: str, category_root: Path, category: str
+) -> tuple[list[Path], dict[str, dict[str, object]]]:
+    document = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if document.get("schema_version") != 1 or document.get("category") != category:
+        raise RuntimeError("Split manifest schema or category does not match the evaluation")
+    records = document.get("records")
+    if not isinstance(records, list):
+        raise RuntimeError("Split manifest has no records list")
+    selected: list[Path] = []
+    indexed: dict[str, dict[str, object]] = {}
+    for record in records:
+        if not isinstance(record, dict) or record.get("split") not in {"development", "heldout"}:
+            raise RuntimeError("Split manifest contains an invalid record")
+        relative_text = record.get("image_path")
+        if not isinstance(relative_text, str) or relative_text in indexed:
+            raise RuntimeError("Split manifest contains an invalid or duplicate image path")
+        relative = Path(relative_text)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise RuntimeError("Split manifest image paths must remain inside the category")
+        path = category_root / relative
+        if not path.is_file() or sha256(path) != record.get("image_sha256"):
+            raise RuntimeError(f"Split image is missing or changed: {path}")
+        indexed[relative_text] = record
+        if record["split"] == split_name:
+            selected.append(path)
+    if not selected:
+        raise RuntimeError(f"Split manifest contains no {split_name} images")
+    return sorted(selected), indexed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--executable", type=Path, required=True)
@@ -119,7 +150,14 @@ def main() -> None:
     parser.add_argument("--output-csv", type=Path, required=True)
     parser.add_argument("--predictions-csv", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--split-manifest", type=Path)
+    parser.add_argument("--split-name", choices=("development", "heldout"))
     args = parser.parse_args()
+
+    if (args.split_manifest is None) != (args.split_name is None):
+        parser.error("--split-manifest and --split-name must be provided together")
+    if args.split_manifest is not None and not args.split_manifest.is_file():
+        parser.error(f"split manifest does not exist: {args.split_manifest}")
 
     for path in (args.executable, args.config):
         if not path.is_file():
@@ -202,11 +240,17 @@ def main() -> None:
         check=True,
     )
 
-    images = sorted(
-        path
-        for path in test_root.rglob("*")
-        if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
-    )
+    split_records: dict[str, dict[str, object]] = {}
+    if args.split_manifest is not None:
+        images, split_records = images_from_split_manifest(
+            args.split_manifest, args.split_name, category_root, args.category
+        )
+    else:
+        images = sorted(
+            path
+            for path in test_root.rglob("*")
+            if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+        )
     if not images:
         parser.error(f"test split contains no supported images: {test_root}")
 
@@ -219,6 +263,11 @@ def main() -> None:
 
     for index, image_path in enumerate(images):
         defect_type = image_path.parent.name
+        relative_image = str(image_path.relative_to(category_root))
+        if split_records:
+            record = split_records[relative_image]
+            if record.get("defect_type") != defect_type or int(record.get("label", -1)) != int(defect_type != "good"):
+                raise RuntimeError(f"Split metadata differs from dataset layout: {relative_image}")
         prefix = f"{index:05d}"
         score_path = args.work_dir / f"{prefix}_score.npy"
         map_path = args.work_dir / f"{prefix}_map.npy"
@@ -244,6 +293,11 @@ def main() -> None:
             mask_path = category_root / "ground_truth" / defect_type / f"{image_path.stem}_mask.png"
             if not mask_path.is_file():
                 raise RuntimeError(f"ground-truth mask does not exist: {mask_path}")
+            if split_records:
+                record = split_records[relative_image]
+                expected_mask = record.get("mask_path")
+                if expected_mask != str(mask_path.relative_to(category_root)) or sha256(mask_path) != record.get("mask_sha256"):
+                    raise RuntimeError(f"Split ground-truth mask is missing or changed: {mask_path}")
             mask = load_mask(mask_path, anomaly_map.shape)
             fingerprint_paths.append(mask_path)
         else:
@@ -254,7 +308,7 @@ def main() -> None:
         pixel_scores.append(anomaly_map.reshape(-1))
         prediction_rows.append(
             {
-                "image_path": str(image_path.relative_to(category_root)),
+                "image_path": relative_image,
                 "image_sha256": sha256(image_path),
                 "defect_type": defect_type,
                 "label": int(is_anomaly),
@@ -296,6 +350,8 @@ def main() -> None:
         "memory_bank_sha256": sha256(memory_bank),
         "executable_sha256": sha256(args.executable),
         "evaluation_dataset_sha256": dataset_sha256,
+        "evaluation_split": args.split_name or "official_test",
+        "split_manifest_sha256": sha256(args.split_manifest) if args.split_manifest else "",
         "image_count": len(images),
         "pixel_count": sum(values.size for values in pixel_labels),
         "image_auroc": image_auroc,
@@ -325,6 +381,12 @@ def main() -> None:
             "work_dir": str(args.work_dir.resolve()),
         },
     }
+    if args.split_manifest is not None:
+        manifest["artifacts"]["split_manifest"] = {
+            "path": str(args.split_manifest.resolve()),
+            "sha256": sha256(args.split_manifest),
+            "split": args.split_name,
+        }
     if threshold_manifest is not None:
         manifest["artifacts"]["threshold_manifest"] = {
             "path": str(threshold_manifest.resolve()),

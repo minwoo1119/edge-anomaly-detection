@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -24,6 +28,35 @@ def run(command: list[str]) -> None:
     subprocess.run(command, check=True)
 
 
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def completed_variant(variant_root: Path, category: str, ratio: float, seed: int) -> bool:
+    marker = variant_root / "COMPLETE.json"
+    if not marker.is_file():
+        return False
+    try:
+        document = json.loads(marker.read_text(encoding="utf-8"))
+        recorded_ratio = Decimal(str(document.get("coreset_ratio")))
+    except (json.JSONDecodeError, ValueError):
+        return False
+    bundle = variant_root / "deployment" / f"{category}_artifacts.zip"
+    checksum = bundle.with_suffix(bundle.suffix + ".sha256")
+    return (
+        document.get("category") == category
+        and recorded_ratio == Decimal(str(ratio))
+        and document.get("seed") == seed
+        and bundle.is_file()
+        and checksum.is_file()
+        and document.get("bundle_sha256") == sha256(bundle)
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-root", type=Path, required=True)
@@ -34,11 +67,12 @@ def main() -> None:
     parser.add_argument("--accelerator", choices=("cpu", "gpu"), default="gpu")
     parser.add_argument("--devices", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
     if not args.dataset_root.is_dir():
         parser.error(f"dataset root does not exist: {args.dataset_root}")
-    if args.output_root.exists() and any(args.output_root.iterdir()):
+    if args.output_root.exists() and any(args.output_root.iterdir()) and not args.resume:
         parser.error(f"output-root must be empty or absent: {args.output_root}")
     if args.calibration_images <= 0 or args.devices <= 0:
         parser.error("calibration-images and devices must be positive")
@@ -52,6 +86,13 @@ def main() -> None:
     for ratio in args.ratios:
         tag = ratio_tag(ratio)
         variant_root = args.output_root / args.category / tag
+        if completed_variant(variant_root, args.category, ratio, args.seed):
+            print(f"skip_complete={variant_root}", flush=True)
+            continue
+        if variant_root.exists():
+            if not args.resume:
+                parser.error(f"variant output already exists: {variant_root}")
+            shutil.rmtree(variant_root)
         checkpoint = variant_root / "models" / f"patchcore_{args.category}_{tag}.ckpt"
         training_manifest = variant_root / "results" / "metadata" / "training.json"
         deployment_root = variant_root / "deployment"
@@ -76,6 +117,19 @@ def main() -> None:
                 "--seed",
                 str(args.seed),
             ]
+        )
+        bundle = deployment_root / f"{args.category}_artifacts.zip"
+        marker = {
+            "schema_version": 1,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "category": args.category,
+            "coreset_ratio": ratio,
+            "seed": args.seed,
+            "bundle": str(bundle.resolve()),
+            "bundle_sha256": sha256(bundle),
+        }
+        (variant_root / "COMPLETE.json").write_text(
+            json.dumps(marker, indent=2) + "\n", encoding="utf-8"
         )
         run(
             [

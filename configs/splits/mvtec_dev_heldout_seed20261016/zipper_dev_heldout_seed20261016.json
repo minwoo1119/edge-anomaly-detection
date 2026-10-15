@@ -1,0 +1,1345 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-15T22:47:02.222774+00:00",
+  "dataset": "MVTec AD",
+  "category": "zipper",
+  "policy": "defect_type_stratified_deterministic",
+  "seed": 20261016,
+  "development_fraction": 0.5,
+  "test_set_used_for_model_training": false,
+  "development_use": "configuration_selection_only",
+  "heldout_use": "single_locked_final_evaluation",
+  "record_count": 151,
+  "counts_by_defect_type": {
+    "broken_teeth": {
+      "development": 10,
+      "heldout": 9
+    },
+    "combined": {
+      "development": 8,
+      "heldout": 8
+    },
+    "fabric_border": {
+      "development": 8,
+      "heldout": 9
+    },
+    "fabric_interior": {
+      "development": 8,
+      "heldout": 8
+    },
+    "good": {
+      "development": 16,
+      "heldout": 16
+    },
+    "rough": {
+      "development": 8,
+      "heldout": 9
+    },
+    "split_teeth": {
+      "development": 9,
+      "heldout": 9
+    },
+    "squeezed_teeth": {
+      "development": 8,
+      "heldout": 8
+    }
+  },
+  "records_sha256": "cb79006f766727370d15760fb1da18cdcc3f338804816426d18529cbc4c1d079",
+  "records": [
+    {
+      "image_path": "test/broken_teeth/000.png",
+      "image_sha256": "a4e1c5a988d05432b59e3ffadfab2dd643503740232b8d8ce48d9c9bf58d7606",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/000_mask.png",
+      "mask_sha256": "b2d054440f8a21a8998a0da2f9d25fb403fd25f640f543184e9f9a4461ce1370"
+    },
+    {
+      "image_path": "test/broken_teeth/001.png",
+      "image_sha256": "fd1b972947bad6859709d7ec515c04821ed656068fc708bb7a785cb1b80f8332",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/001_mask.png",
+      "mask_sha256": "3ab9909701945ea7d2e8b62ffe394bb36796f62e35970959a9c3ee42fbf0dcc8"
+    },
+    {
+      "image_path": "test/broken_teeth/002.png",
+      "image_sha256": "08a59195d246909ad9cf8f284f298b180e00c26cf856a56b8b8e2ea41ae918fe",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/002_mask.png",
+      "mask_sha256": "d007b8e8b648e2f52e9006535ec807083992700b45adb3433c682ff99a1d22e5"
+    },
+    {
+      "image_path": "test/broken_teeth/003.png",
+      "image_sha256": "15f4d692b1da6a618f38e08d8777ac4341c7ce0dd10d4e3af38d75ca52eddc4d",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/003_mask.png",
+      "mask_sha256": "187aada0a1a3c4e6a92d2b58c6fa66347e220a7fe672279a1488706219fb8037"
+    },
+    {
+      "image_path": "test/broken_teeth/004.png",
+      "image_sha256": "523d94acdb40d5632c9770a1866420192ecc2c1d5a2bf10de93f598db961aba1",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/004_mask.png",
+      "mask_sha256": "1020033ce43de95f471c13535fe3ae1a05336080460f501c0fd5cee1264e669c"
+    },
+    {
+      "image_path": "test/broken_teeth/005.png",
+      "image_sha256": "0528b134f96342eff650843a9810e45be71bf882f44e5e1e1488c8efe6571866",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/005_mask.png",
+      "mask_sha256": "46f75c0ba19f2d8d407642a4bdc11387ac61c09168772ec31c25e7cd4bc98e9d"
+    },
+    {
+      "image_path": "test/broken_teeth/006.png",
+      "image_sha256": "f538018aec81f298ce3c5492b3183a5db8a5573a0670a6cd9b4b161a77220d87",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/006_mask.png",
+      "mask_sha256": "3216d4afeff20a411aa99feaa80018025e6c9b49d368f22bf3e30fde892ccb0d"
+    },
+    {
+      "image_path": "test/broken_teeth/007.png",
+      "image_sha256": "64c6206096480cbad4c22f98a6b2c8ce2434d781585732e4e75a31668320eebf",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/007_mask.png",
+      "mask_sha256": "dd729e1a4b6d09f5c363e5c1db749c6f9b7fc3ca173a56bf9de458910b36acfd"
+    },
+    {
+      "image_path": "test/broken_teeth/008.png",
+      "image_sha256": "7d21df30419be81cce9d8bcf6637a5ed70a6e79dda27037d704b286754b20b30",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/008_mask.png",
+      "mask_sha256": "683d6754f66aa45141fd3ce5c1b864be064ecdb21e35370fc6e250ddbf53fb61"
+    },
+    {
+      "image_path": "test/broken_teeth/009.png",
+      "image_sha256": "a3779dacda88730e8bcc74cab0e8cd80f29d03c14439826322a1a9eb7151406e",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/009_mask.png",
+      "mask_sha256": "1c4e129cc00eec5fa25f94e582854d590e3d222051a7d2dbe7a0ab02a93e6e08"
+    },
+    {
+      "image_path": "test/broken_teeth/010.png",
+      "image_sha256": "8218d3136226ad241827d875deca1257d7aaf81ac375376fe7829bbd7b03f881",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/010_mask.png",
+      "mask_sha256": "e1d4fe43580ef49ad821d21300c5a8ff4d141f9d60d2ed5fd1d43f2563829236"
+    },
+    {
+      "image_path": "test/broken_teeth/011.png",
+      "image_sha256": "b17c1ed8e6fbc6060f19c7e4ec4cee3e5039d43d89012ca9dee42dc59b84cc36",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/011_mask.png",
+      "mask_sha256": "8a572e2d6eeca0419e491895863c7e572fa1950c94ab4cb5877471a0e45d1e0f"
+    },
+    {
+      "image_path": "test/broken_teeth/012.png",
+      "image_sha256": "75bcd3b8d661932a22d119698e31f6fb0a74b04c106a1eed755dc4f6bee27cf6",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/012_mask.png",
+      "mask_sha256": "eb5e33f910c5ffbdddba1a7bac213c85271c313a657f0efea09ad12b211b04df"
+    },
+    {
+      "image_path": "test/broken_teeth/013.png",
+      "image_sha256": "cd8cb6be6713e26973c444acd329fdccf1d325bf62bcc83920c123e0fa9972e2",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/013_mask.png",
+      "mask_sha256": "e4021560c1ffd278e76a3bec3894551a7884adc0add7d739731154fbf18de8c4"
+    },
+    {
+      "image_path": "test/broken_teeth/014.png",
+      "image_sha256": "e7282f6b7e08a3d6a3277c371d67508929ca71a8d862339b9597077cbd681a32",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/014_mask.png",
+      "mask_sha256": "a5a57ea7d0a36b72c1ce74fd6863407dfbd22384f09619961f32f888b6777f41"
+    },
+    {
+      "image_path": "test/broken_teeth/015.png",
+      "image_sha256": "9817dc214b75d7a87fee175c554b4cf1dc2b0d63eb0b76ffced11764036d90ce",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/015_mask.png",
+      "mask_sha256": "cb0fdcd81ee02e851e2bdf924e5e262f9435bc1bd8b884ef42818b36f0ee44e9"
+    },
+    {
+      "image_path": "test/broken_teeth/016.png",
+      "image_sha256": "33a1244925fe44b858638c755ca0baceb8265390c2177795bb04a9b5e488c7fb",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/016_mask.png",
+      "mask_sha256": "681e7e79b814032ca95f465f70741792efafe80f6c9963c0a85156c49e456c27"
+    },
+    {
+      "image_path": "test/broken_teeth/017.png",
+      "image_sha256": "906db3372b01ca4a5731eee6d9a13b0c7799af97c08ae1d7f565efed91816d8a",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/broken_teeth/017_mask.png",
+      "mask_sha256": "afd13b19aaf299e2e8e94743ebc31243630cdd06356773c84925b806851e497c"
+    },
+    {
+      "image_path": "test/broken_teeth/018.png",
+      "image_sha256": "b142164568a0eab13d44b54baed63d9716d8c86c73152bc45432e71916095506",
+      "defect_type": "broken_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/broken_teeth/018_mask.png",
+      "mask_sha256": "91190c41073a60857577bfaa0e11e47ee1ea9f4446dadb974d5f503855f6427e"
+    },
+    {
+      "image_path": "test/combined/000.png",
+      "image_sha256": "c2fc8a1e126f030702098a3cab7a0d6b7239a008cad7e494f8cb2cad5be07969",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/000_mask.png",
+      "mask_sha256": "b5ff37afa2c46897ae90fe1587f5966dba3b542297b895e108b83b166eb74b51"
+    },
+    {
+      "image_path": "test/combined/001.png",
+      "image_sha256": "c50ad4a57c3920fc87bb2a3ce847b68a07db0fcc2fef9bb15366ec4eaa1be996",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/001_mask.png",
+      "mask_sha256": "467ef5ba5a87c6c7569bfd8d1543b4ade13941af15840d70067b74cd02fd3b56"
+    },
+    {
+      "image_path": "test/combined/002.png",
+      "image_sha256": "495123f71088c56e5a20ac736d1c067358e27873a2e68e1eee4e3bf193474acf",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/002_mask.png",
+      "mask_sha256": "89575f475aabbad346b11923451c00bf93d35118e52cd7664dfa7918089ded71"
+    },
+    {
+      "image_path": "test/combined/003.png",
+      "image_sha256": "0e09e5ae4299686f6c487f2576982f4a261f4d59bcf2a381e32ea661546cce0f",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/003_mask.png",
+      "mask_sha256": "12b1d025dec5b4fdf3fe9086a9ceba96caefb465ebba1fe2ba6840b6755e60b8"
+    },
+    {
+      "image_path": "test/combined/004.png",
+      "image_sha256": "e991bcb7712ba3c145cf17a85f5ba700a7f23991d5a3eca0f88a1ed3c74ff8cc",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/004_mask.png",
+      "mask_sha256": "25bce5c728e7e875a6519697e10d3c254a472cf66b1ee348d17e6bb20c4634f7"
+    },
+    {
+      "image_path": "test/combined/005.png",
+      "image_sha256": "a64b0ffe77cdaafb8f526c9e25e6ed1686f7e7aed6975c62a87838c19072a6be",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/005_mask.png",
+      "mask_sha256": "9f9f03f1bef56635efc73d7e94783a231fcb6adb3e98473ba6ef12cf4abf9669"
+    },
+    {
+      "image_path": "test/combined/006.png",
+      "image_sha256": "358cf0c3cb76b26f61afd14ec77bbd3b5b447f0bb92acb346a151a0f92953f93",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/006_mask.png",
+      "mask_sha256": "963d059bbe450c6a82172bfcfa90029fab70026dc85eacc7001e5fa6200a1da6"
+    },
+    {
+      "image_path": "test/combined/007.png",
+      "image_sha256": "7ec005b02420bea7981896e338f4066d692c6f2fc854b273b8ddcf57eda358bc",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/007_mask.png",
+      "mask_sha256": "ab51b1e6cb72e6899d1baf243f843906268c7070ab9683dc3544e605163d660f"
+    },
+    {
+      "image_path": "test/combined/008.png",
+      "image_sha256": "8e7cb183023cb3ec1f77a55b5999ffb764104d11a11a72e2aab8c172dd4a222a",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/008_mask.png",
+      "mask_sha256": "d13fe474b3e2f58c67de5fd329721eb0b50661730be01cc1af4d6831311c31e2"
+    },
+    {
+      "image_path": "test/combined/009.png",
+      "image_sha256": "d67414264f7e511ca5945c26d59a77527ccfd653fd867a223a81345de63a5b9e",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/009_mask.png",
+      "mask_sha256": "82d90ce4e4ffa4abd67d91fd980ed0625a8a43447ec4f302d1e258ff6f6204c5"
+    },
+    {
+      "image_path": "test/combined/010.png",
+      "image_sha256": "470e8283973aea5ede7982fad361750b51ef4d2b40f957a700c460df20ecba95",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/010_mask.png",
+      "mask_sha256": "f35c78195472140233364237f9af0992c8bdb347b007821d6e2acba63f4cf36b"
+    },
+    {
+      "image_path": "test/combined/011.png",
+      "image_sha256": "197de19377fd555282a46c820d2769a8fe90455e8728dc8f14d8261268d2c227",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/011_mask.png",
+      "mask_sha256": "55b6f2b032b73816e0666c034aa4afdb9623e2c2f32377780a11d7d41be4c929"
+    },
+    {
+      "image_path": "test/combined/012.png",
+      "image_sha256": "ae36643573b661d850920760b8d0c1d982d7316f6628dc0f058101e449d25866",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/combined/012_mask.png",
+      "mask_sha256": "326d109603c522ff86e3b7cc97e9dc9074287656639ae04abc67e9d666443214"
+    },
+    {
+      "image_path": "test/combined/013.png",
+      "image_sha256": "82f16c89b9d5dfaba8e519a44b5cbd44d64ced89bb6c77167c5b85637300bef4",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/013_mask.png",
+      "mask_sha256": "f295465ba86ae1bfa446e540743d74956a40d730951f30900b293fb60ec0b0cf"
+    },
+    {
+      "image_path": "test/combined/014.png",
+      "image_sha256": "ecbbaba5dc20f928502617fcb54240ded083201880aa1acaf82e560427a98fbd",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/014_mask.png",
+      "mask_sha256": "1361529583ed2934c65f010956709279dadd1f1bb26882555a40c70c4dea2f91"
+    },
+    {
+      "image_path": "test/combined/015.png",
+      "image_sha256": "9d4de46cbae670f1322f6e33d70df8fc2c5ed7066c83976ed56c0e7818829ef4",
+      "defect_type": "combined",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/combined/015_mask.png",
+      "mask_sha256": "e6e541f39dc6056a7930f4c09eba1d668e9c50485c5f61df34c314efa04fe1ce"
+    },
+    {
+      "image_path": "test/fabric_border/000.png",
+      "image_sha256": "f28ec21a1c190f6184dbf119c51eeceb889e199b8ec519708fda9a2887b8b4ac",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/000_mask.png",
+      "mask_sha256": "b61810123a44aca7389822884569d438de300211a9b18ea0c8c823329843b195"
+    },
+    {
+      "image_path": "test/fabric_border/001.png",
+      "image_sha256": "6f7d27c964a64c61f1ce029e130d4013fbf5fcd7e886561263d078f4dbc0829c",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/001_mask.png",
+      "mask_sha256": "a27948933e968384ae2a69faf756074330d9b08d3cd068eab6a6e96efbf9886a"
+    },
+    {
+      "image_path": "test/fabric_border/002.png",
+      "image_sha256": "b621434e83b0d7005c30ef1e7281fff4b8adcf64b54e7fbb5429f46ee8db1511",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/002_mask.png",
+      "mask_sha256": "ed2fb01055d09e35c5aa071737b44fb28eb6d6fe6fe8c6aeb4042c55b574097a"
+    },
+    {
+      "image_path": "test/fabric_border/003.png",
+      "image_sha256": "d9f1d1f61926a9b8e585d013fb950f0aa56e27a0ad03557ae1f197fcbd4f2c32",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/003_mask.png",
+      "mask_sha256": "a64140e3edfa7362e3ad9847b56f5a1e05cad22f228de626bd3343588da811c2"
+    },
+    {
+      "image_path": "test/fabric_border/004.png",
+      "image_sha256": "ed994892cd4443e8159421270beaeaba8564bf3746fe969a8e8f6e97c0bbc62f",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/004_mask.png",
+      "mask_sha256": "be665283b3d0c7295c66d060da6f2940f342dcd7d6ca5e4d7fee41d4b4194003"
+    },
+    {
+      "image_path": "test/fabric_border/005.png",
+      "image_sha256": "2cb5946e6cd719e131169784267ebe210d987f680d4845cc404a0456f73877c7",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/005_mask.png",
+      "mask_sha256": "d72a17d8392dea38344915c7d2cead0fcca291177d3158400c0b63c80564f0dd"
+    },
+    {
+      "image_path": "test/fabric_border/006.png",
+      "image_sha256": "53dc722bf76d011a35954032fe3258b438c5486eb324df47d2a741749419f2d5",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/006_mask.png",
+      "mask_sha256": "3c3b55239b97e84fca15b8259220ed7efe005ec4e431c32a9b2a860de295d912"
+    },
+    {
+      "image_path": "test/fabric_border/007.png",
+      "image_sha256": "637eb45d9f3bfb77e7ddd03ec972f0d90a6b6e347ade2671dd18c442695be91a",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/007_mask.png",
+      "mask_sha256": "4c7ab4812623aaee0acc4cfc5eb4af06e2a24d08332d64ef2f3018d21614701f"
+    },
+    {
+      "image_path": "test/fabric_border/008.png",
+      "image_sha256": "534b804df68674145f5c029ea84ab1d3f267faf0f03dfff3684aa7a17116f9ee",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/008_mask.png",
+      "mask_sha256": "e9ea08def57eb643a23b465a9e9e3c3b3175e3e8de1272cfc4461b6ec09fafd2"
+    },
+    {
+      "image_path": "test/fabric_border/009.png",
+      "image_sha256": "68d0912ff916a82a0e243e595dc07b69d215c8ed6085826b9a7f13b1c7fa2957",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/009_mask.png",
+      "mask_sha256": "94cd75ac09302bbfcc395238435f0d18827a33d5b3ab0e1edc4c0c16c1e7c205"
+    },
+    {
+      "image_path": "test/fabric_border/010.png",
+      "image_sha256": "dc80cac98261eb137b600c5674d89282ea7dc089eaf5fd64a8c1af4b3a350dfc",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/010_mask.png",
+      "mask_sha256": "a72415e2477948ed410b5dc6807a9a9b52d2d04cd3269fc585ff891e90cecebc"
+    },
+    {
+      "image_path": "test/fabric_border/011.png",
+      "image_sha256": "d51aa804cdc7354b26bb86d077225e7402f21d33287755ccc7ac623e83cabcbc",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/011_mask.png",
+      "mask_sha256": "c4645209674fc18ca77192cd4ac64033cf43778edbc26ddd15795a3aba8d8085"
+    },
+    {
+      "image_path": "test/fabric_border/012.png",
+      "image_sha256": "af4cd86a579406d1c9a078a5845d43a44a0827db37cecab1f19f71da480c9a18",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/012_mask.png",
+      "mask_sha256": "72d0afc18c4bdd03487478c2149faa479117d10db8800ee3003a6dfe8bc12671"
+    },
+    {
+      "image_path": "test/fabric_border/013.png",
+      "image_sha256": "d2bd93532d09846fb3ebed4b5854a23b50bf2e56cde6bbbc4822b2c024236940",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/013_mask.png",
+      "mask_sha256": "5be2cf9ad8ab4ea730fe31adcabca25f4d6d27cf0a9e0676499e61792b25eefb"
+    },
+    {
+      "image_path": "test/fabric_border/014.png",
+      "image_sha256": "65354d967a5f1e7a42ba4cfed3e676b2519de0adeff3a75c93e0bf1c6da71be6",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/014_mask.png",
+      "mask_sha256": "fc397524c30f03c07b2d59c28535e524c5570c901541fd9d10d197042917f33f"
+    },
+    {
+      "image_path": "test/fabric_border/015.png",
+      "image_sha256": "9cadbaba03f1de6e69839377cce2e0f4097847ec9a5344280a89738169dfa5c8",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_border/015_mask.png",
+      "mask_sha256": "8571404ee096cf3ca4388bea7d70bbf5cf6239559f6fcf2f46886bfb76bd0bd6"
+    },
+    {
+      "image_path": "test/fabric_border/016.png",
+      "image_sha256": "53ce71743e0b53000a53545500e8645729233d7a210eccbc03ae96f091907b45",
+      "defect_type": "fabric_border",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_border/016_mask.png",
+      "mask_sha256": "48601df1f721b1577b467790e42362d2c8d474f135d33a80bbc92dcc04a54427"
+    },
+    {
+      "image_path": "test/fabric_interior/000.png",
+      "image_sha256": "5b3a22edd0bb9a306f78fd1ce3b2a77d4522b4ecb0ecf41c39c85fc90ed1519d",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/000_mask.png",
+      "mask_sha256": "aa7e14c60c73506a3d113bd2ae71bd25eec3faf9c27cad26d03ffb627483acf0"
+    },
+    {
+      "image_path": "test/fabric_interior/001.png",
+      "image_sha256": "54e097e87f3b801bb79d8e45aa945891c85a2c82868d666f08689e946d0cd5c4",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/001_mask.png",
+      "mask_sha256": "13bf108bba8ef38341b0fb3218f3c651eb59d9fa8cef0b5b90182716b6851dd0"
+    },
+    {
+      "image_path": "test/fabric_interior/002.png",
+      "image_sha256": "e8b533465dc6d59ee7998c059c47acc5a0012319b0b699d4ffaccb1d4ec762d3",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/002_mask.png",
+      "mask_sha256": "c6f1a54d616d1c347dc23930acd7dc358c7399708a3bbe88a4db538b7ff15c8d"
+    },
+    {
+      "image_path": "test/fabric_interior/003.png",
+      "image_sha256": "618b40eb12d6fc502fcdec7203d9f0e0f6f0dc20a1875f1e70ae98a7ea446b7e",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/003_mask.png",
+      "mask_sha256": "32bf6ac79988a55484eeebbc65d882b9a34b7779ae4609d61f4afd9ed5e8e643"
+    },
+    {
+      "image_path": "test/fabric_interior/004.png",
+      "image_sha256": "02d0236a13396f956e4a10998629489b25ce0518c5692db7463cc8e4b8058eff",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/004_mask.png",
+      "mask_sha256": "1438fc472769a516f465e649a04a8e121877ef13b714dd097748730b6acb347f"
+    },
+    {
+      "image_path": "test/fabric_interior/005.png",
+      "image_sha256": "60574ea87c9d0233e5e984b7e631cb4c361bc5744755e98685640381ffef5804",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/005_mask.png",
+      "mask_sha256": "caf67bf3fc67e4a76ec3311f9e6124edf4de24f3b46460cecfe22a08d32ac0a3"
+    },
+    {
+      "image_path": "test/fabric_interior/006.png",
+      "image_sha256": "5b88ee5a9d79136bbc4c1bc546c350db9a53a010967960ef4d01c4e037ff7747",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/006_mask.png",
+      "mask_sha256": "b08cdc21d3a5270d328c43720714a99d4e2b6f168538ffac56a890e2cc747a91"
+    },
+    {
+      "image_path": "test/fabric_interior/007.png",
+      "image_sha256": "bc4bbfd87b9d9a59d538f9c1d2d74b9c5f0c74bc1500e5a03bba5ecea601e443",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/007_mask.png",
+      "mask_sha256": "a9c32e84faec440be99e7c4922251e91e138b982ab1a6b420acade66424daec8"
+    },
+    {
+      "image_path": "test/fabric_interior/008.png",
+      "image_sha256": "b74b05a5be69513248cedf97de36634ee53b00dbd43f09309e637a071c1dee7c",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/008_mask.png",
+      "mask_sha256": "860f4fd185b4001ac7110eb6131896bf452601d6a233670629b3bc7237a6d3ff"
+    },
+    {
+      "image_path": "test/fabric_interior/009.png",
+      "image_sha256": "6ecc814914dfc3487f53dd50861692e9102bf491ea7ce0b78bea7c20b89de72e",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/009_mask.png",
+      "mask_sha256": "be5a7e0210a4848cac2d8b49f2b344fc4115c5352035b626c5f7146c9cfb1d26"
+    },
+    {
+      "image_path": "test/fabric_interior/010.png",
+      "image_sha256": "d841a8b6cd87ffddab9275f70e375a6807c2d2d7e274143ee991dd0da84b3bf4",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/010_mask.png",
+      "mask_sha256": "ad1eeb7844d8137d3505b53505189142f875953e87ff7cf52a7b5cd8be371319"
+    },
+    {
+      "image_path": "test/fabric_interior/011.png",
+      "image_sha256": "8ccae1361689344593df81312737e5e6dc6ed0ee97a8dcf6e01e87f6158b4fc2",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/011_mask.png",
+      "mask_sha256": "97c80f0e49f6e22f5970bd7ce3b56ad014b1f06aa2bfceb2185fe7b3bacc7d26"
+    },
+    {
+      "image_path": "test/fabric_interior/012.png",
+      "image_sha256": "0371337384423e478e15ff786ad3cb72531adf6280aecff18e5501510f321758",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/012_mask.png",
+      "mask_sha256": "3b0154b1cc2a2d174f2c8bf4e1e6c7d2913c74a918f8e00e8d90873f5518f55c"
+    },
+    {
+      "image_path": "test/fabric_interior/013.png",
+      "image_sha256": "ebf456c0702b1593913617fc6fcdb67717ab32130ae13f8ef722e9b147861868",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/013_mask.png",
+      "mask_sha256": "9efc0ff9b30c21c0e9ff64630d9d4b8d4193e378beffc2029932f504aa65ed3b"
+    },
+    {
+      "image_path": "test/fabric_interior/014.png",
+      "image_sha256": "f27d203976c49c2da9b3b1302326f90d2c5682de67fd2602a4aa731ccf4924b1",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/fabric_interior/014_mask.png",
+      "mask_sha256": "7556575ccf994278dc800d64528834d9968bd5b9ef63d0c0ed48adc88c8d7d22"
+    },
+    {
+      "image_path": "test/fabric_interior/015.png",
+      "image_sha256": "f52661b73961577d0733e9226fa5878c6acc2dd61743c5ac5493894ad569495c",
+      "defect_type": "fabric_interior",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/fabric_interior/015_mask.png",
+      "mask_sha256": "8068668cf3b734f4824f8acd6d8bea364c73fb2152ad32867904358323650aa6"
+    },
+    {
+      "image_path": "test/good/000.png",
+      "image_sha256": "d32509278132f15d01ec1c3fd59e9b6514c28ad29c238ebd5b4b07443b23c5ad",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/001.png",
+      "image_sha256": "b7f55ee492ae582e990e46768a98f06b37a4d629b95aa87529cfda2dc73aff86",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/002.png",
+      "image_sha256": "4ac47a00cc93633c5a36327d5842daa9475eace765c76d12b1b29237a4b61557",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/003.png",
+      "image_sha256": "ff4740780325896cb9aa3928d87c20f78e8dea7d831f93dad399d673cce510ea",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/004.png",
+      "image_sha256": "ca139a8fcb13aff1db2557d938d4a0ba86a048331d512b831a182821d0563724",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/005.png",
+      "image_sha256": "19b8be5ae0290cd51947c694ba62f9334c7411000c4c284d3409f3b51957ddd7",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/006.png",
+      "image_sha256": "e63464a83a2855b02e719ec42f7b39fc89423204372744bc3921ca4f7da46a52",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/007.png",
+      "image_sha256": "329fcb01d48d87d9c6c6df565aac89e6c6a6fa02bf5862c8391184aedbd780e4",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/008.png",
+      "image_sha256": "7bae2193a46e72a67026426962a03d6385e8e18f0999b8c094894c3e42e6aeb0",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/009.png",
+      "image_sha256": "0ba02cb6f7a0785f21c318df7929dcab6b22044b8f65f56b1b991a2c26db4faa",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/010.png",
+      "image_sha256": "75f8ff1749e37ce7a420502ddc019e0fb028a91d80c381f32872c69f43e05e78",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/011.png",
+      "image_sha256": "78b295c1b43cac98a40aab49967ecd1f3d76fa810794a89c3d709062913d8a39",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/012.png",
+      "image_sha256": "45211c7605ff9f66a18f6f131f597125f38040747b15c62f9136685d28da2f79",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/013.png",
+      "image_sha256": "6aa1f58975f37eb187101fc9fd62ba58c2fe695487bc297789d146c3a4f35183",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/014.png",
+      "image_sha256": "c7d060d93b7c4fda4c4e752e89ceda60c0b85a0962eaa51f67b8a32f6a28e538",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/015.png",
+      "image_sha256": "2a43c029b1135c6ec01dcdc1132f3abd79daa3f8d581ccc4b7f7dcb959376eb6",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/016.png",
+      "image_sha256": "b654b948eecb58a26adc7b401382819a984019c14036f438c3be92c7108d45b3",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/017.png",
+      "image_sha256": "bc644f1e1a4910b223f18c829cb7bfae54f42b457aaf04c68294e1d7774fcd1f",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/018.png",
+      "image_sha256": "340d94030f0b5ff91f093144ca7c0b79d6ad3093330234c085842e48acc5af93",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/019.png",
+      "image_sha256": "df755175674491f9cc6cac62a04e9bf800f9c6e532ad3a57beda36c89866801b",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/020.png",
+      "image_sha256": "d8cbdd5727508fd7055322d2eb0ad9f28abeebd208e025794006f23745741ef7",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/021.png",
+      "image_sha256": "eecbdb724fad9b1d35fd4fa555a0c32213884504ce9d60dfc64a5734fe0fdbdb",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/022.png",
+      "image_sha256": "f939d5b6b48b3d0834d42ad4b4660835a8b423af3fd963eae11dc437895d16a3",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/023.png",
+      "image_sha256": "e31d13ab7f9b2b1f89f39e80688a5fedac6141fe28c3ff41afdf63e0536f29b7",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/024.png",
+      "image_sha256": "5647763d41c628d0c574591d6f0a2cf009c72c48988f58afda372bd6d8d91003",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/025.png",
+      "image_sha256": "c32d4c002026eb7d39c568b88210e90f916e3a386a72b422da766377357c7670",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/026.png",
+      "image_sha256": "39802264883854d8659b8291c719465e94dfe429b13817e29a5226d6114df498",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/027.png",
+      "image_sha256": "03a1ca6f3f97b54a6a9e4b322f08b2f31ab775dbc79c67540a8679237c5e89e8",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/028.png",
+      "image_sha256": "132ef4a3f450cd35c429181896e8865b8775206273ed5366a1e08846fa68c49e",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/029.png",
+      "image_sha256": "76fbbf18f5748d69f467004c412951f0329a02f716bf6c3648ca31986f267e3c",
+      "defect_type": "good",
+      "label": 0,
+      "split": "development"
+    },
+    {
+      "image_path": "test/good/030.png",
+      "image_sha256": "b3c9f2a64c0f652c21184477f0597c3e9a121ab81639c90fbf082cc4d6794adc",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/good/031.png",
+      "image_sha256": "8c5a712dd2a88b3039e2f1381cd2f0240f20259c31f8e03e0b4df5338c17f6d7",
+      "defect_type": "good",
+      "label": 0,
+      "split": "heldout"
+    },
+    {
+      "image_path": "test/rough/000.png",
+      "image_sha256": "537d90f69d35a16680263515f82030db4c5c9a8be488966a859600afab6629e5",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/000_mask.png",
+      "mask_sha256": "df882a52ade50b67120a478cd75cf6b76927ca61c526824f9b36b572e58b81d6"
+    },
+    {
+      "image_path": "test/rough/001.png",
+      "image_sha256": "9cc1646cdea3759f4489db792b738cee36a1f6a2869a0446e0af51c7b3ed1b7a",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/001_mask.png",
+      "mask_sha256": "577d37d3ce0e08f4060f5292721be19b9ab8ea557b0632cce2f563d75a65ab97"
+    },
+    {
+      "image_path": "test/rough/002.png",
+      "image_sha256": "033d60e7d1e5f96142e2ff7ed3d701be624c3341640d2c1601e6b736f3c4da4b",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/002_mask.png",
+      "mask_sha256": "cb75e01a389b061ac9576356941acebd343abdb77d2d651cff85cd1697066263"
+    },
+    {
+      "image_path": "test/rough/003.png",
+      "image_sha256": "a3dd238ec3ca3cddb9ff9c58a1fb77fa76a23b366938cfc52f43e13abd8affa7",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/003_mask.png",
+      "mask_sha256": "db47282bf35e30fe538ac3d9471a9f5ce5b0d33a705a759e3e5cdf5034f94bb8"
+    },
+    {
+      "image_path": "test/rough/004.png",
+      "image_sha256": "020feefcc0ea058158dcc155e77dc99c476f7d42555cb3d7163a9302f619e2b9",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/004_mask.png",
+      "mask_sha256": "9365d82592c71b0172cb80577c8a04324814b6486ab6bd0a12681b32bce3f120"
+    },
+    {
+      "image_path": "test/rough/005.png",
+      "image_sha256": "25631097b062eabc5907710f2faa9a8dbdf2219563e78b334e4806384ad5f02f",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/005_mask.png",
+      "mask_sha256": "2f8dd24af0cf55b2b51f9e3680c3fc4af941112b57366c54ae513836bf38dbf7"
+    },
+    {
+      "image_path": "test/rough/006.png",
+      "image_sha256": "c76f0cf84a75778f771f500daa9112e1b4f7dba75787f34c251498320c4c3e92",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/006_mask.png",
+      "mask_sha256": "2c31b7c814b041f662dab89a70f8a9fedb97babf04ffe6e7927cfd390139bfe5"
+    },
+    {
+      "image_path": "test/rough/007.png",
+      "image_sha256": "a42fcc71d9b1d643746468a2e09f651b329edcc66041ae1ac6ebb0c903c3fa7a",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/007_mask.png",
+      "mask_sha256": "91668a83a9a0be0741db62ad6ee06f055a3c49cf73cdd5741c393fef4bdca4f2"
+    },
+    {
+      "image_path": "test/rough/008.png",
+      "image_sha256": "124abc98b2b995c3a44ff3d79b8e0ee92338cc9887914a2a1ad095cc1db59cc7",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/008_mask.png",
+      "mask_sha256": "096156a860ce06907ea59db2e02cf9821ca762d42d6ac450fb475f1a9917f0f5"
+    },
+    {
+      "image_path": "test/rough/009.png",
+      "image_sha256": "f00552b0e7b162b9274294a3ebef0ab84aef0028b9a1e8872d4a0c9c9a41f60f",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/009_mask.png",
+      "mask_sha256": "67dc18c2900bec89ebdc5762fa8de67bb5a508df3ad57b87f82d13ac5aa58783"
+    },
+    {
+      "image_path": "test/rough/010.png",
+      "image_sha256": "2c19581a27f0642e47dea1d22d51cae7c8a8c0211b0dd298278bd41f6a16e81d",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/010_mask.png",
+      "mask_sha256": "df62be17ce470e93cdc9161b241e17332e394e31a28f9d4e25d06baf9c8658e4"
+    },
+    {
+      "image_path": "test/rough/011.png",
+      "image_sha256": "d7584e27a71381ee37e7fb96fed1f0765f5f8eff2264830e4c0d0502b2e8d9b4",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/011_mask.png",
+      "mask_sha256": "7b62adf65b7ed768deb0a844b3924013d5c456415d3b8f3cf48556ea54f0ae94"
+    },
+    {
+      "image_path": "test/rough/012.png",
+      "image_sha256": "a64aa55fa09735cfef1ebee63aa5430707091d88e1a155d8f1ba4e0ee46707c8",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/012_mask.png",
+      "mask_sha256": "fcbd61023f8e4a1feab878a6031884880919594280c0354a1cb737867a20dbaf"
+    },
+    {
+      "image_path": "test/rough/013.png",
+      "image_sha256": "5f8fa510ff8a9a43c6fbbbf2e803d6acbb375cfc8f831892a65e92ed191b4078",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/013_mask.png",
+      "mask_sha256": "1b94b84e567af1d27d1f70f09e0664914d1ca44b33a5832ac15bdc69bc7a97d1"
+    },
+    {
+      "image_path": "test/rough/014.png",
+      "image_sha256": "22e2bc7ed4a909f9fa6c79b45d79cf6ddf991aae5e93c7fa2f34e49b55e050f9",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/014_mask.png",
+      "mask_sha256": "2be66ef430b16716f9c61c713811991e42a1170dbdbe7272a0c0ee71c38cc78c"
+    },
+    {
+      "image_path": "test/rough/015.png",
+      "image_sha256": "f7997b89a6bd94323bfc014b42f8b2dcae858345a457a524108ba0447170464b",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/rough/015_mask.png",
+      "mask_sha256": "3fe73645cc89763640422fca2472344e3f0c7e429ff9479ad616eac69d6a7262"
+    },
+    {
+      "image_path": "test/rough/016.png",
+      "image_sha256": "8a7ef9c5335ffe7535649ef92dae5c71bb81baa36110a35639e147dfd1c0c3b4",
+      "defect_type": "rough",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/rough/016_mask.png",
+      "mask_sha256": "ee16286fd51d20796395059d87cb38a79c572483b310c791c27f6011c3fb7462"
+    },
+    {
+      "image_path": "test/split_teeth/000.png",
+      "image_sha256": "2aea4c9097600dfca5a1cdbac8d89df285cb8a252849be5ebe1f745ccb778ba2",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/000_mask.png",
+      "mask_sha256": "c30ebef45b5454387028e9d72dc4e187951afd795684f988dd4ac2e4829919b8"
+    },
+    {
+      "image_path": "test/split_teeth/001.png",
+      "image_sha256": "7a06cea1cb2be155b1f623ad9e4cf9e01e0b2e896bf44d4f554ebe8858785e2c",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/001_mask.png",
+      "mask_sha256": "71a4231a64340ae12dbb0518715919e0648993f4b53542765554267c26dd916b"
+    },
+    {
+      "image_path": "test/split_teeth/002.png",
+      "image_sha256": "eca2279339f57f1074bb0d9096108abb13843a02601108403021c9d17e15a867",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/002_mask.png",
+      "mask_sha256": "d58a83289e36f3bd63bac85384a7c20caf6e9370cd125c26ddff41b9ef49e81d"
+    },
+    {
+      "image_path": "test/split_teeth/003.png",
+      "image_sha256": "e9af0012b97ea5eecacbc69f07b08c2153732e529d349b34e858e95c0131e260",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/003_mask.png",
+      "mask_sha256": "2824e020a92ef5f807381bf1a84d18b0dcdf4abd3a54e46f7c7901cbea877b2b"
+    },
+    {
+      "image_path": "test/split_teeth/004.png",
+      "image_sha256": "1d3a3a1069acdbaecf65f5cc7eb3d29fae0acf625e18e34ff9236b08617e2132",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/004_mask.png",
+      "mask_sha256": "cf4fc754a06d9daa0df9660559f215b4fd5988c5bf254e43bf5410e543721216"
+    },
+    {
+      "image_path": "test/split_teeth/005.png",
+      "image_sha256": "623b30610fe92aad3d6ed7c0ba68a99c2a3a42919050e2c3d376b5175e43af2f",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/005_mask.png",
+      "mask_sha256": "41f7b92ddf02bef160b809620bda07b7b9960b7a5c70b62f5e42cb86e893ae9c"
+    },
+    {
+      "image_path": "test/split_teeth/006.png",
+      "image_sha256": "1777e9f112b6fed14e79d1bfbd1854dbf7d2f3440f6b1d7fdfdb9a552a6ee6e5",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/006_mask.png",
+      "mask_sha256": "769377a05bfb690a3ebc24e13e0f592117a651e5c7dd8413f5974e899acfd342"
+    },
+    {
+      "image_path": "test/split_teeth/007.png",
+      "image_sha256": "153eeec44233912ba45e5b42ed0c4b129776171e0e398edaf60ee16ba4d7087b",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/007_mask.png",
+      "mask_sha256": "ff69c6f794b2bd1848351578a37eb6e1fece6cec8ca24ccd06fab76ff82aa9f6"
+    },
+    {
+      "image_path": "test/split_teeth/008.png",
+      "image_sha256": "c93099a3c07cf51963dc8fcd0c39ae661943dd588e6e9c8121758ecdc8ac4676",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/008_mask.png",
+      "mask_sha256": "4e482c4935e0e6903e6b69aa191dfa95eef14471ca92952052848cb93ee87bc5"
+    },
+    {
+      "image_path": "test/split_teeth/009.png",
+      "image_sha256": "c510dc218c2a0ec0c2b753ba7e74278fac30f6377a687cb6b3ddb9318e9b6a4a",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/009_mask.png",
+      "mask_sha256": "7fd76504408b767064dac78347b6a3f243b1fc16a13b6a8a4506edfc78d78d6e"
+    },
+    {
+      "image_path": "test/split_teeth/010.png",
+      "image_sha256": "a7895c86f01f4afa03f5ef72e07928549df6ec301a818362ff1e3b8de8cebbcf",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/010_mask.png",
+      "mask_sha256": "1859bdd788369ac995b4db56792bd5494d2f09333eb2da1836a828a19f185455"
+    },
+    {
+      "image_path": "test/split_teeth/011.png",
+      "image_sha256": "b88ea2c948b868efec81207b0caff15a741d56a90dbd6511fdfd9a4c942591eb",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/011_mask.png",
+      "mask_sha256": "911ee2c2ea3db65204c4ca0e6f5845f5950e0faa8564e984b965a3fec22da422"
+    },
+    {
+      "image_path": "test/split_teeth/012.png",
+      "image_sha256": "2a0c332c2bad1b5f37869b2a1539e216ab86b03995769b6144c62334e1cae50a",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/012_mask.png",
+      "mask_sha256": "174c262e16a642944a083075fec07099c2cba3712a91b4bbe6b148543ee4dddf"
+    },
+    {
+      "image_path": "test/split_teeth/013.png",
+      "image_sha256": "9516234f19a050b628627d0f0a74449ec394720bdef8368a380af980692d7699",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/013_mask.png",
+      "mask_sha256": "a6a5bf2a1a14c0d4e50512f1b18a99c19c8fdd2c66b8bba851c84b63c976181d"
+    },
+    {
+      "image_path": "test/split_teeth/014.png",
+      "image_sha256": "48d54313cf26ac883ae945e3265b65f5026eba3b928ddf5d1948e30c12502b48",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/014_mask.png",
+      "mask_sha256": "efa2af55af1f4e32d0ebda295935292d1b4a0dffea137758b7bac5d471991970"
+    },
+    {
+      "image_path": "test/split_teeth/015.png",
+      "image_sha256": "44e389d8b7026e8b39eda16573482de58ff378c026ba147c4bd9d8205e50ba0f",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/015_mask.png",
+      "mask_sha256": "0cf146de5374c1cd9c717edc0f772cec3eb01a5bf7f3e3fb2104db5cea15ac8b"
+    },
+    {
+      "image_path": "test/split_teeth/016.png",
+      "image_sha256": "1b3d32f89f3e4b2d4a6a0fa7739c14feabaea742417013f15732c5608b03f530",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/split_teeth/016_mask.png",
+      "mask_sha256": "946e9847cd860127cfe76471300b2d8910466c9c70a0aef8c744eda5d567495b"
+    },
+    {
+      "image_path": "test/split_teeth/017.png",
+      "image_sha256": "edcae561152477f86b13753aee7523c2dbe97b227f3a6a561b189d9645fd9a92",
+      "defect_type": "split_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/split_teeth/017_mask.png",
+      "mask_sha256": "ba994aece5b1973345894898cea8de73aba4fc95327cec05f17787ceb94ce81c"
+    },
+    {
+      "image_path": "test/squeezed_teeth/000.png",
+      "image_sha256": "d4656f10fd8bfcc6bca24aae2c4087ceaeb1f2d2262884f06ff7df12d077f842",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/000_mask.png",
+      "mask_sha256": "6e19404c898d6cd82e7c817425964f8f8f0b4bf0f60bd106c0a76ab031d303e2"
+    },
+    {
+      "image_path": "test/squeezed_teeth/001.png",
+      "image_sha256": "0570e88723c7f271c2d265ee923fe55d63dc64073d2d946cbe58ff425be7357e",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/001_mask.png",
+      "mask_sha256": "3fe2220b10a00c4a8170001501f99925c1d9d851fd3e7a53273f4dadeeebc951"
+    },
+    {
+      "image_path": "test/squeezed_teeth/002.png",
+      "image_sha256": "40e6a8065bff5436c1c29490febf569009111a9bc24bc95105d13667583676a1",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/002_mask.png",
+      "mask_sha256": "4d467ee948d6ee4d20da67243c047c241ac99e75da041d4b8b497b2561adca48"
+    },
+    {
+      "image_path": "test/squeezed_teeth/003.png",
+      "image_sha256": "b5d8c7f7d1e155cd6f9cec922674b36fac8e9c4f99c980ba275806273fc5a1d6",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/003_mask.png",
+      "mask_sha256": "b1c5509effa26c747eddb7e439294e41b34cb24cd76520125a1657b921a99ebb"
+    },
+    {
+      "image_path": "test/squeezed_teeth/004.png",
+      "image_sha256": "667ea265b4cb53b612bbd34915b4b2c653782935df7128c962a64a28bb4ce49a",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/004_mask.png",
+      "mask_sha256": "cde130f245f8ef61ff4fb13ec5885dc7f67ef58ca07a31c34e7734524b4d8a65"
+    },
+    {
+      "image_path": "test/squeezed_teeth/005.png",
+      "image_sha256": "e2876db02d7cb84b5fd385e1a4b55ec045bc8e0beef29cd340e891b845478005",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/005_mask.png",
+      "mask_sha256": "933df4fae060963192e33c4fc7c252c4b7975bce05c098e83bdb18d8fa84d773"
+    },
+    {
+      "image_path": "test/squeezed_teeth/006.png",
+      "image_sha256": "682e11c3cfc75bd09c6b33676fedefc253fd14252717ac24db978163aa609bd7",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/006_mask.png",
+      "mask_sha256": "33dd6a5ad9408c2778d089d59ae65754873870b4a72a18715d1ebc5c8236fdfa"
+    },
+    {
+      "image_path": "test/squeezed_teeth/007.png",
+      "image_sha256": "c93029102acc45c7b51cc3ba49ae7f04d1347493dfa7bcba11646c8e7b1bba30",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/007_mask.png",
+      "mask_sha256": "225cf63a07b7f25b45d72b970c096610cf325bb4ffd769133019f830d11f391f"
+    },
+    {
+      "image_path": "test/squeezed_teeth/008.png",
+      "image_sha256": "a6c2c26dab0bdc5e3cfc0600000b2e9d53cd9e5b963c6e04d9c61ed51caeff0a",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/008_mask.png",
+      "mask_sha256": "6875b076146b773d564ef060aeed6b0113d06e41129149f0c63f180ee89b517a"
+    },
+    {
+      "image_path": "test/squeezed_teeth/009.png",
+      "image_sha256": "6c8a1451b0050eefe5aae1fc8c58974fe151172d4a734e52edfdb6cb79d085a8",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/009_mask.png",
+      "mask_sha256": "d2db4be63722da5d50fecf9906430fbbdebbd489f1f2cbc359bf08ad4d528a79"
+    },
+    {
+      "image_path": "test/squeezed_teeth/010.png",
+      "image_sha256": "8bad26c97eaf7400ff827f6781d6e0789261741a28d2942d38be254607f128c8",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/010_mask.png",
+      "mask_sha256": "bcfc6cb3687decd314abc32f12b5180e2a15d5bece98ef355dfa0546978b1baa"
+    },
+    {
+      "image_path": "test/squeezed_teeth/011.png",
+      "image_sha256": "3a1a9ace6babede79e50e81ceb5c83524f7d1e88032b31234b8afa9d0118af69",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/011_mask.png",
+      "mask_sha256": "66c2d43f85fd774c32aae99aa7b9f077bfcc96bb6c26ea15b3fe5045e0b2a691"
+    },
+    {
+      "image_path": "test/squeezed_teeth/012.png",
+      "image_sha256": "f82862ac5a1cec9a4b3afd0e83f63865a892ac0bb6e1c469fe09bc5465a1a12e",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/012_mask.png",
+      "mask_sha256": "5318788948131a31f10d4a5afebfd110de76bfae4ad183d2dadda31a3b974b23"
+    },
+    {
+      "image_path": "test/squeezed_teeth/013.png",
+      "image_sha256": "e1bcf32992496a19dac4bdf36dbe80fd3f4f02907933655c79294c3196072f8b",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/013_mask.png",
+      "mask_sha256": "5a4ea82eedb95ebf63c6cb6e6073bcfbe003f9c495a0c80480cb4e088c68fa78"
+    },
+    {
+      "image_path": "test/squeezed_teeth/014.png",
+      "image_sha256": "cbfe9ba4607aacfdf86a67cd051b72f03bd503727443ed8a3592ea16d19426c8",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "heldout",
+      "mask_path": "ground_truth/squeezed_teeth/014_mask.png",
+      "mask_sha256": "de821ce2e924ec0244b1456daedd6d379124bd17930c492c05f8817a51b8cd8e"
+    },
+    {
+      "image_path": "test/squeezed_teeth/015.png",
+      "image_sha256": "e4b5056dc9ff509843cef2c138c603aafb669563c00e222950d4001763b69b95",
+      "defect_type": "squeezed_teeth",
+      "label": 1,
+      "split": "development",
+      "mask_path": "ground_truth/squeezed_teeth/015_mask.png",
+      "mask_sha256": "2d08b97a945aef1211ec283b76a387d1ec787d5bf2721363ebeeac07be3f9ed6"
+    }
+  ]
+}

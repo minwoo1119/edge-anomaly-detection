@@ -181,6 +181,9 @@ three-size profiling matrix remain under Gate 9.
   complete. Nsight Compute occupancy/bandwidth counters still require the
   privileged commands recorded in each profiling directory.
 - Gate 10: multi-category, multi-ratio, multi-seed validation-based selection.
+  The deterministic 15-category development/held-out manifests, split-aware
+  evaluator, resumable 225-variant runner, and Colab notebook are implemented.
+  Artifact generation and target measurements remain pending.
 - Gate 11: native FP16 FAISS GPU index storage is complete at commit `7040fd1`.
   It halves the configured bank payload, preserves Bottle AUROC, and reduces
   measured energy by 13.81%, while E2E mean increases by 2.70%. Evidence is in
