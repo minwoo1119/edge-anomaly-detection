@@ -190,4 +190,6 @@ three-size profiling matrix remain under Gate 9.
   `paper/bank_storage_results.md`.
 - Gate 12: locked selection followed by held-out test evaluation.
 - Gate 13: fixed-rate arrivals with p99/max, miss rate, backlog, drops, and
-  sustained thermal/power evidence.
+  sustained thermal/power evidence. The timestamped bounded-queue runtime,
+  tegrastats capture, and analysis pipeline are implemented; the clean short
+  sweep and predeclared sustained target runs remain pending.

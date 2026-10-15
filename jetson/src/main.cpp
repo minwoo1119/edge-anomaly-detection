@@ -23,9 +23,11 @@
 #include <condition_variable>
 #include <cstdint>
 #include <cstdlib>
+#include <deque>
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -51,8 +53,13 @@ struct CommandLine {
     std::string rawScorePath;
     std::string benchmarkReadyPath;
     std::string benchmarkStartPath;
+    std::string fixedRateCsvPath;
     BenchmarkMetadata benchmarkMetadata;
     std::string runIdOverride;
+    double arrivalPeriodMs{0.0};
+    double deadlineMs{0.0};
+    std::size_t frameCount{0};
+    std::size_t queueCapacity{0};
     bool preprocessOnly{false};
 };
 
@@ -71,6 +78,8 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
                       << "[--memory-bank-sha256 <hash>] [--image-sha256 <hash>] "
                       << "[--executable-sha256 <hash>] "
                       << "[--benchmark-ready <path>] [--benchmark-start <path>] "
+                      << "[--fixed-rate-csv <output.csv> --arrival-period-ms <ms> "
+                      << "--frame-count <count> --deadline-ms <ms> --queue-capacity <count>] "
                       << "[--preprocess-only]\n";
             std::exit(0);
         }
@@ -83,7 +92,9 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
              || argument == "--engine-sha256" || argument == "--memory-bank-sha256"
              || argument == "--image-sha256" || argument == "--executable-sha256"
              || argument == "--benchmark-ready"
-             || argument == "--benchmark-start") && index + 1 >= argc) {
+             || argument == "--benchmark-start" || argument == "--fixed-rate-csv"
+             || argument == "--arrival-period-ms" || argument == "--frame-count"
+             || argument == "--deadline-ms" || argument == "--queue-capacity") && index + 1 >= argc) {
             throw std::invalid_argument("Missing value for argument: " + argument);
         }
         if (argument == "--config") commandLine.configPath = argv[++index];
@@ -105,6 +116,11 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
         else if (argument == "--executable-sha256") commandLine.benchmarkMetadata.executableSha256 = argv[++index];
         else if (argument == "--benchmark-ready") commandLine.benchmarkReadyPath = argv[++index];
         else if (argument == "--benchmark-start") commandLine.benchmarkStartPath = argv[++index];
+        else if (argument == "--fixed-rate-csv") commandLine.fixedRateCsvPath = argv[++index];
+        else if (argument == "--arrival-period-ms") commandLine.arrivalPeriodMs = std::stod(argv[++index]);
+        else if (argument == "--frame-count") commandLine.frameCount = std::stoull(argv[++index]);
+        else if (argument == "--deadline-ms") commandLine.deadlineMs = std::stod(argv[++index]);
+        else if (argument == "--queue-capacity") commandLine.queueCapacity = std::stoull(argv[++index]);
         else if (argument == "--preprocess-only") commandLine.preprocessOnly = true;
         else throw std::invalid_argument("Unknown argument: " + argument);
     }
@@ -120,7 +136,20 @@ CommandLine parseCommandLine(int argc, char* argv[]) {
         );
     }
     if (!commandLine.benchmarkReadyPath.empty() && commandLine.benchmarkCsvPath.empty()) {
-        throw std::invalid_argument("Benchmark synchronization requires --benchmark-csv.");
+        if (commandLine.fixedRateCsvPath.empty()) {
+            throw std::invalid_argument("Measurement synchronization requires a benchmark or fixed-rate CSV.");
+        }
+    }
+    if (!commandLine.fixedRateCsvPath.empty()) {
+        if (!commandLine.benchmarkCsvPath.empty()) {
+            throw std::invalid_argument("Fixed-rate and benchmark CSV modes are mutually exclusive.");
+        }
+        if (!(commandLine.arrivalPeriodMs > 0.0) || !(commandLine.deadlineMs > 0.0)
+            || commandLine.frameCount == 0 || commandLine.queueCapacity == 0) {
+            throw std::invalid_argument(
+                "Fixed-rate mode requires positive period, frame count, deadline, and queue capacity."
+            );
+        }
     }
     commandLine.benchmarkMetadata.configPath = commandLine.configPath;
     commandLine.benchmarkMetadata.imagePath = commandLine.imagePath;
@@ -150,7 +179,7 @@ void synchronizeBenchmarkStart(const CommandLine& commandLine) {
 }
 
 void validateBenchmarkInvocation(const CommandLine& commandLine) {
-    if (commandLine.benchmarkCsvPath.empty()) return;
+    if (commandLine.benchmarkCsvPath.empty() && commandLine.fixedRateCsvPath.empty()) return;
     if (std::string(benchmarkBuildType()) != "Release") {
         throw std::runtime_error(
             "Benchmarking requires a Release build; current build type is "
@@ -390,6 +419,153 @@ InferenceRun runInference(
         gpuResidentNn
     );
 }
+
+struct FixedRateRecord {
+    std::size_t frameId{0};
+    bool dropped{false};
+    double scheduledArrivalMs{0.0};
+    double actualArrivalMs{0.0};
+    double serviceStartMs{0.0};
+    double completionMs{0.0};
+    double queueWaitMs{0.0};
+    double serviceMs{0.0};
+    double responseMs{0.0};
+    double outputIntervalMs{0.0};
+    std::size_t queueDepthAtArrival{0};
+    std::size_t queueDepthAtServiceStart{0};
+    bool deadlineMiss{false};
+    float score{0.0F};
+};
+
+double sinceMilliseconds(
+    std::chrono::steady_clock::time_point start,
+    std::chrono::steady_clock::time_point value
+) {
+    return std::chrono::duration<double, std::milli>(value - start).count();
+}
+
+std::vector<FixedRateRecord> runFixedRate(
+    const CommandLine& commandLine,
+    const cv::Mat& image,
+    const Preprocessor& preprocessor,
+    TensorRTInferencer& inferencer,
+    const PatchCorePostprocessor& postprocessor,
+    const MemoryBank& memoryBank,
+    const INearestNeighborSearch& nearestNeighborSearch,
+    bool gpuResidentNn,
+    InferenceRun& lastRun
+) {
+    using Clock = std::chrono::steady_clock;
+    std::vector<FixedRateRecord> records(commandLine.frameCount);
+    std::deque<std::size_t> queue;
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool producerDone = false;
+    const auto start = Clock::now();
+    const auto period = std::chrono::duration<double, std::milli>(commandLine.arrivalPeriodMs);
+    std::thread producer([&] {
+        for (std::size_t frame = 0; frame < commandLine.frameCount; ++frame) {
+            const auto scheduled = start + std::chrono::duration_cast<Clock::duration>(period * frame);
+            std::this_thread::sleep_until(scheduled);
+            const auto arrived = Clock::now();
+            std::lock_guard<std::mutex> lock(mutex);
+            auto& record = records[frame];
+            record.frameId = frame;
+            record.scheduledArrivalMs = commandLine.arrivalPeriodMs * frame;
+            record.actualArrivalMs = sinceMilliseconds(start, arrived);
+            record.queueDepthAtArrival = queue.size();
+            if (queue.size() >= commandLine.queueCapacity) {
+                record.dropped = true;
+                record.deadlineMiss = true;
+            } else {
+                queue.push_back(frame);
+                condition.notify_one();
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            producerDone = true;
+        }
+        condition.notify_all();
+    });
+
+    std::optional<Clock::time_point> previousCompletion;
+    while (true) {
+        std::size_t frame = 0;
+        std::size_t depth = 0;
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            condition.wait(lock, [&] { return producerDone || !queue.empty(); });
+            if (queue.empty() && producerDone) break;
+            frame = queue.front();
+            queue.pop_front();
+            depth = queue.size();
+        }
+        const auto serviceStart = Clock::now();
+        lastRun = runInference(
+            image, preprocessor, inferencer, postprocessor, memoryBank,
+            nearestNeighborSearch, gpuResidentNn
+        );
+        const auto completion = Clock::now();
+        auto& record = records[frame];
+        record.queueDepthAtServiceStart = depth;
+        record.serviceStartMs = sinceMilliseconds(start, serviceStart);
+        record.completionMs = sinceMilliseconds(start, completion);
+        record.queueWaitMs = record.serviceStartMs - record.actualArrivalMs;
+        record.serviceMs = sinceMilliseconds(serviceStart, completion);
+        record.responseMs = record.completionMs - record.actualArrivalMs;
+        record.outputIntervalMs = previousCompletion
+            ? std::chrono::duration<double, std::milli>(completion - *previousCompletion).count()
+            : 0.0;
+        record.deadlineMiss = record.responseMs > commandLine.deadlineMs;
+        record.score = lastRun.result.score;
+        previousCompletion = completion;
+    }
+    producer.join();
+    return records;
+}
+
+void writeFixedRateCsv(
+    const std::string& path,
+    const RuntimeConfig& config,
+    const CommandLine& commandLine,
+    const std::vector<FixedRateRecord>& records
+) {
+    const std::filesystem::path outputPath(path);
+    if (std::filesystem::exists(outputPath)) {
+        throw std::runtime_error("Refusing to overwrite fixed-rate CSV: " + path);
+    }
+    if (outputPath.has_parent_path()) std::filesystem::create_directories(outputPath.parent_path());
+    std::ofstream output(outputPath);
+    if (!output) throw std::runtime_error("Failed to open fixed-rate CSV: " + path);
+    output << "run_id,frame_id,status,arrival_period_ms,deadline_ms,scheduled_arrival_ms,"
+              "actual_arrival_ms,service_start_ms,completion_ms,queue_wait_ms,service_ms,"
+              "response_ms,output_interval_ms,deadline_miss,queue_depth_at_arrival,"
+              "queue_depth_at_service_start,score,config_sha256,engine_sha256,"
+              "memory_bank_sha256,image_sha256,executable_sha256\n";
+    output << std::setprecision(12);
+    for (const auto& record : records) {
+        output << config.runId << ',' << record.frameId << ','
+               << (record.dropped ? "dropped" : "completed") << ','
+               << commandLine.arrivalPeriodMs << ',' << commandLine.deadlineMs << ','
+               << record.scheduledArrivalMs << ',' << record.actualArrivalMs << ',';
+        if (record.dropped) {
+            output << ",,,,,,";
+        } else {
+            output << record.serviceStartMs << ',' << record.completionMs << ','
+                   << record.queueWaitMs << ',' << record.serviceMs << ','
+                   << record.responseMs << ',' << record.outputIntervalMs << ',';
+        }
+        output << (record.deadlineMiss ? "true" : "false") << ','
+               << record.queueDepthAtArrival << ',' << record.queueDepthAtServiceStart << ',';
+        if (!record.dropped) output << record.score;
+        output << ',' << commandLine.benchmarkMetadata.configSha256 << ','
+               << commandLine.benchmarkMetadata.engineSha256 << ','
+               << commandLine.benchmarkMetadata.memoryBankSha256 << ','
+               << commandLine.benchmarkMetadata.imageSha256 << ','
+               << commandLine.benchmarkMetadata.executableSha256 << '\n';
+    }
+}
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -470,7 +646,30 @@ int main(int argc, char* argv[]) {
         const bool gpuResidentNn = config.optimizationStageIndex() >= 5;
 
         InferenceRun run;
-        if (commandLine.benchmarkCsvPath.empty()) {
+        if (!commandLine.fixedRateCsvPath.empty()) {
+            for (int iteration = 0; iteration < config.warmup; ++iteration) {
+                runInference(
+                    image, preprocessor, inferencer, postprocessor, memoryBank,
+                    *nearestNeighborSearch, gpuResidentNn
+                );
+            }
+            synchronizeBenchmarkStart(commandLine);
+            const auto records = runFixedRate(
+                commandLine, image, preprocessor, inferencer, postprocessor,
+                memoryBank, *nearestNeighborSearch, gpuResidentNn, run
+            );
+            writeFixedRateCsv(commandLine.fixedRateCsvPath, config, commandLine, records);
+            const auto completed = std::count_if(records.begin(), records.end(), [](const auto& item) {
+                return !item.dropped;
+            });
+            const auto misses = std::count_if(records.begin(), records.end(), [](const auto& item) {
+                return item.deadlineMiss;
+            });
+            std::cout << "fixed_rate_frames=" << records.size() << '\n'
+                      << "fixed_rate_completed=" << completed << '\n'
+                      << "fixed_rate_dropped=" << records.size() - completed << '\n'
+                      << "fixed_rate_deadline_misses=" << misses << '\n';
+        } else if (commandLine.benchmarkCsvPath.empty()) {
             run = runInference(
                 image,
                 preprocessor,

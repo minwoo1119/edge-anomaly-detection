@@ -67,6 +67,9 @@ parse_tegrastats = load_module(
 analyze_sustained = load_module(
     "analyze_sustained_run", ROOT / "jetson" / "scripts" / "analyze_sustained_run.py"
 )
+analyze_fixed_rate = load_module(
+    "analyze_fixed_rate", ROOT / "jetson" / "scripts" / "analyze_fixed_rate.py"
+)
 validate_artifact_chain = load_module(
     "validate_artifact_chain",
     ROOT / "jetson" / "scripts" / "validate_artifact_chain.py",
@@ -125,6 +128,38 @@ class TegrastatsTest(unittest.TestCase):
         self.assertEqual(temperature, [45.5, 50.0])
         self.assertEqual(gpu, [40.0, 60.0])
         self.assertEqual(cpu, [7.5, 15.0])
+
+    def test_fixed_rate_summary_counts_drops_deadlines_and_p99(self) -> None:
+        rows = [
+            {
+                "run_id": "fixed-01", "frame_id": "0", "status": "completed",
+                "arrival_period_ms": "100", "deadline_ms": "150", "response_ms": "120",
+                "service_ms": "100", "queue_wait_ms": "20", "output_interval_ms": "0",
+                "completion_ms": "120", "deadline_miss": "false",
+                "queue_depth_at_arrival": "0",
+            },
+            {
+                "run_id": "fixed-01", "frame_id": "1", "status": "completed",
+                "arrival_period_ms": "100", "deadline_ms": "150", "response_ms": "170",
+                "service_ms": "110", "queue_wait_ms": "60", "output_interval_ms": "160",
+                "completion_ms": "270", "deadline_miss": "true",
+                "queue_depth_at_arrival": "1",
+            },
+            {
+                "run_id": "fixed-01", "frame_id": "2", "status": "dropped",
+                "arrival_period_ms": "100", "deadline_ms": "150", "response_ms": "",
+                "service_ms": "", "queue_wait_ms": "", "output_interval_ms": "",
+                "completion_ms": "", "deadline_miss": "true",
+                "queue_depth_at_arrival": "2",
+            },
+        ]
+        summary = analyze_fixed_rate.summarize(rows)
+        self.assertEqual(summary["completed_frames"], 2)
+        self.assertEqual(summary["dropped_frames"], 1)
+        self.assertEqual(summary["deadline_failure_count_including_drops"], 2)
+        self.assertAlmostEqual(summary["deadline_failure_rate_including_drops"], 2 / 3)
+        self.assertEqual(summary["maximum_queue_depth_at_arrival"], 2)
+        self.assertEqual(summary["response_max_ms"], 170.0)
 
 
 class ColabPipelineTest(unittest.TestCase):
