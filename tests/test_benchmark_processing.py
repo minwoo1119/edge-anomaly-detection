@@ -39,6 +39,10 @@ prepare_multicategory = load_module(
     "prepare_multicategory_publication",
     ROOT / "jetson" / "scripts" / "prepare_multicategory_publication.py",
 )
+prepare_revision_coreset = load_module(
+    "prepare_revision_coreset_matrix",
+    ROOT / "jetson" / "scripts" / "prepare_revision_coreset_matrix.py",
+)
 run_colab_pipeline = load_module(
     "run_colab_pipeline", ROOT / "src" / "run_colab_pipeline.py"
 )
@@ -209,6 +213,23 @@ class ColabPipelineTest(unittest.TestCase):
             self.assertTrue(run_coreset_ablation.completed_variant(root, "bottle", 0.1, 42))
             bundle.write_bytes(b"changed")
             self.assertFalse(run_coreset_ablation.completed_variant(root, "bottle", 0.1, 42))
+
+    def test_revision_bundle_identity_includes_training_seed(self) -> None:
+        import json
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "variant.zip"
+            training = {
+                "dataset": {"category": "cable"},
+                "model": {"coreset_ratio": 0.025},
+                "runtime": {"seed": 123},
+            }
+            with zipfile.ZipFile(bundle, "w") as archive:
+                archive.writestr("results/training_manifest.json", json.dumps(training))
+            self.assertEqual(
+                prepare_revision_coreset.identify(bundle),
+                ("cable", 123, prepare_revision_coreset.Decimal("0.025")),
+            )
 
 
 class MvtecDevelopmentSplitTest(unittest.TestCase):

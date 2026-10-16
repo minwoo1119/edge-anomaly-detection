@@ -193,4 +193,6 @@ three-size profiling matrix remain under Gate 9.
   sustained thermal/power evidence. The timestamped bounded-queue runtime,
   tegrastats capture, and analysis pipeline are implemented. The clean short
   sweep is complete, and the 550 ms/3,273-frame sustained acceptance criteria
-  are frozen in `paper/fixed_rate_results.md` before execution.
+  were frozen in `paper/fixed_rate_results.md` before execution. The 30-minute
+  run passed all criteria with zero drops/misses and response p99/max of
+  260.268/279.202 ms. Gate 13 is complete for the declared Bottle scenario.

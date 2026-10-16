@@ -41,3 +41,25 @@ Before inspecting the sustained result, the confirmation run is fixed as:
 Canonical short-sweep evidence is
 `results/processed/r4_fixed_rate_sweep.csv` and the five
 `results/metadata/r4-fixed-bottle-*_fixed_rate.json` files.
+
+## Sustained result
+
+The predeclared run completed all 3,273 offered frames over 1,799.838 s. No
+frame was dropped and no completed frame exceeded the 1.1 s deadline. Response
+mean/p95/p99/max was 222.988/241.686/260.268/279.202 ms. Maximum queue depth
+was zero, queue-wait p99/max was 0.597/0.857 ms, and last-versus-first-quarter
+queue-wait growth was 0.003 ms. The observed maximum temperature was 49.031 C,
+average/peak power was 5.107/10.810 W, and energy including idle time was 2.809
+J per completed image.
+
+All six frozen acceptance checks pass: zero drops, zero completed misses, p99
+and maximum below 1.1 s, queue-wait growth at most 25 ms, and temperature below
+80 C. This supports the declared Bottle scenario under repeated-frame load. It
+does not establish that 550 ms/1.1 s is a requirement of a particular factory,
+and repeated-image input does not measure camera or storage acquisition costs.
+
+Canonical sustained evidence:
+
+- `results/csv/r5-fixed-bottle-p550-30min-9879755_fixed_rate.csv`;
+- `results/raw/tegrastats/r5-fixed-bottle-p550-30min-9879755_fixed_rate.log`;
+- `results/metadata/r5-fixed-bottle-p550-30min-9879755_fixed_rate.json`.

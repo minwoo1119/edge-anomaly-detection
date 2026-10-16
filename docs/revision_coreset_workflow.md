@@ -83,3 +83,9 @@ The split itself is deterministic, but selecting on several alternative split
 seeds would still leak held-out information. The tracked seed `20261016` is the
 only selection split for this study. Training seeds 42, 123, and 2026 measure
 coreset variability and do not change the development/held-out membership.
+
+After downloading Colab bundles, prepare them on Jetson with
+`jetson/scripts/prepare_revision_coreset_matrix.py`. The first bundle builds an
+FP16 TensorRT engine. Later bundles reuse it only when their ONNX SHA-256
+matches, while writing a distinct engine manifest for each export lineage.
+This avoids rebuilding an identical frozen feature extractor up to 225 times.

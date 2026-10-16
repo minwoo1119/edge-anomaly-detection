@@ -135,7 +135,13 @@ def main() -> None:
     parser.add_argument("--expected-category")
     parser.add_argument("--expected-coreset-ratio", type=float)
     parser.add_argument("--skip-engine-build", action="store_true")
+    parser.add_argument(
+        "--reuse-engine", type=Path,
+        help="reuse a compatible FP16 engine instead of invoking trtexec",
+    )
     args = parser.parse_args()
+    if args.skip_engine_build and args.reuse_engine is not None:
+        parser.error("--skip-engine-build and --reuse-engine are mutually exclusive")
 
     repository = Path(__file__).resolve().parents[2]
     bundle = args.bundle.resolve()
@@ -183,10 +189,22 @@ def main() -> None:
     engine_manifest = engine.with_suffix(engine.suffix + ".json")
     if not args.skip_engine_build:
         trtexec = find_trtexec()
-        subprocess.run(
-            [str(trtexec), f"--onnx={onnx}", f"--saveEngine={engine}", "--fp16", "--skipInference"],
-            check=True,
-        )
+        if args.reuse_engine is not None:
+            source_engine = args.reuse_engine.resolve()
+            source_manifest = source_engine.with_suffix(source_engine.suffix + ".json")
+            if not source_engine.is_file() or not source_manifest.is_file():
+                parser.error("reuse engine and its .json manifest must exist")
+            reuse = json.loads(source_manifest.read_text(encoding="utf-8"))
+            reuse_artifacts = reuse.get("artifacts")
+            reuse_onnx = reuse_artifacts.get("onnx") if isinstance(reuse_artifacts, dict) else None
+            if not isinstance(reuse_onnx, dict) or reuse_onnx.get("sha256") != sha256(onnx):
+                raise RuntimeError("Reuse engine ONNX hash differs from the extracted bundle")
+            shutil.copy2(source_engine, engine)
+        else:
+            subprocess.run(
+                [str(trtexec), f"--onnx={onnx}", f"--saveEngine={engine}", "--fp16", "--skipInference"],
+                check=True,
+            )
         subprocess.run(
             [
                 sys.executable,
@@ -213,6 +231,7 @@ def main() -> None:
         "artifact_root": str(artifact_root),
         "config": str(config_output) if not args.skip_engine_build else None,
         "engine_built": not args.skip_engine_build,
+        "engine_reused": args.reuse_engine is not None,
     }
     (artifact_root / "jetson_preparation.json").write_text(
         json.dumps(preparation, indent=2, sort_keys=True) + "\n", encoding="utf-8"
