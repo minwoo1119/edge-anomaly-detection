@@ -61,6 +61,24 @@ constraints and negative results. Report conventional full official-test
 scores as a separate track and never describe split-selected held-out scores as
 official full-test results.
 
+After development accuracy and system rows have been joined into one CSV, lock
+the choices with:
+
+```bash
+python3 src/select_accuracy_constrained_configs.py \
+  --development-results results/processed/revision_development_results.csv \
+  --seeds 42 123 2026 \
+  --baseline-ratio 0.10 \
+  --image-auroc-tolerance 0.005 \
+  --pixel-auroc-tolerance 0.005 \
+  --output results/metadata/revision_locked_selection.json
+```
+
+The selector rejects held-out rows, requires every declared training seed to
+meet both baseline-relative accuracy constraints, then minimizes mean E2E
+latency with energy, device bank storage, ratio, backend, and precision as
+fixed tie breakers. The output records source CSV and selected artifact hashes.
+
 The split itself is deterministic, but selecting on several alternative split
 seeds would still leak held-out information. The tracked seed `20261016` is the
 only selection split for this study. Training seeds 42, 123, and 2026 measure

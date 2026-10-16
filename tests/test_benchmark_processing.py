@@ -58,6 +58,10 @@ generate_system_configs = load_module(
 create_mvtec_split = load_module(
     "create_mvtec_dev_test_split", ROOT / "src" / "create_mvtec_dev_test_split.py"
 )
+select_configs = load_module(
+    "select_accuracy_constrained_configs",
+    ROOT / "src" / "select_accuracy_constrained_configs.py",
+)
 run_experiment_matrix = load_module(
     "run_experiment_matrix", ROOT / "jetson" / "scripts" / "run_experiment_matrix.py"
 )
@@ -244,6 +248,37 @@ class MvtecDevelopmentSplitTest(unittest.TestCase):
                 evaluate_runtime.images_from_split_manifest(
                     manifest, "development", category, "bottle"
                 )
+
+
+class AccuracyConstrainedSelectionTest(unittest.TestCase):
+    def test_every_seed_constraint_and_latency_objective(self) -> None:
+        rows = []
+        for seed in (42, 123, 2026):
+            for ratio, total, image, pixel in (
+                ("0.1", "100", "0.99", "0.98"),
+                ("0.05", "70", "0.987", "0.976"),
+                ("0.01", "40", "0.98", "0.97"),
+            ):
+                rows.append({
+                    "category": "bottle", "training_seed": str(seed),
+                    "coreset_ratio": ratio, "bank_precision": "fp32",
+                    "nn_backend": "cublas", "evaluation_split": "development",
+                    "image_auroc": image, "pixel_auroc": pixel,
+                    "total_mean": total, "energy_per_image_mj": total,
+                    "device_bank_storage_mb": str(float(ratio) * 1000),
+                    "config_sha256": f"config-{seed}-{ratio}",
+                    "memory_bank_sha256": f"bank-{seed}-{ratio}",
+                })
+        choices = select_configs.select(rows, 0.1, 0.005, 0.005, {42, 123, 2026})
+        self.assertEqual(len(choices), 1)
+        self.assertEqual(choices[0]["coreset_ratio"], 0.05)
+        self.assertEqual(choices[0]["feasible_candidates"], 2)
+
+    def test_rejects_heldout_input(self) -> None:
+        with self.assertRaises(RuntimeError):
+            select_configs.select(
+                [{"evaluation_split": "heldout"}], 0.1, 0.005, 0.005, {42}
+            )
 
 
 class BenchmarkSummaryTest(unittest.TestCase):

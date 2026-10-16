@@ -52,6 +52,28 @@ def resolve_artifact(repository: Path, value: str) -> Path:
     return path if path.is_absolute() else repository / path
 
 
+def training_seed(export_manifest_path: Path) -> int:
+    export = json.loads(export_manifest_path.read_text(encoding="utf-8"))
+    lineage = export.get("training_manifest")
+    if not isinstance(lineage, dict):
+        raise RuntimeError("Export manifest has no training-manifest lineage")
+    recorded = Path(str(lineage.get("path", "")))
+    candidates = (
+        recorded,
+        export_manifest_path.parent / "training_manifest.json",
+        export_manifest_path.parent.parent / "results" / "training_manifest.json",
+    )
+    manifest_path = next((path for path in candidates if path.is_file()), None)
+    if manifest_path is None or sha256(manifest_path) != lineage.get("sha256"):
+        raise RuntimeError("Training manifest is unavailable or differs from export lineage")
+    training = json.loads(manifest_path.read_text(encoding="utf-8"))
+    runtime = training.get("runtime")
+    seed = runtime.get("seed") if isinstance(runtime, dict) else None
+    if not isinstance(seed, int):
+        raise RuntimeError("Training manifest has no integer runtime seed")
+    return seed
+
+
 def binary_auc(labels: np.ndarray, scores: np.ndarray) -> float:
     labels = np.asarray(labels, dtype=np.bool_).reshape(-1)
     scores = np.asarray(scores, dtype=np.float64).reshape(-1)
@@ -340,6 +362,7 @@ def main() -> None:
         "git_commit": git_commit,
         "git_dirty": git_dirty,
         "category": args.category,
+        "training_seed": training_seed(export_manifest),
         "precision": config["precision"],
         "coreset_ratio": config["coreset_ratio"],
         "bank_precision": config["bank_precision"],
