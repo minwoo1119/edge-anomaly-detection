@@ -37,12 +37,14 @@ Checked against the official JRTIP submission guidelines on 2026-10-13.
 
 ## Required technical revision before submission
 
-- [ ] Complete matched cuBLAS and available FAISS GPU exact-retrieval baselines.
-- [ ] Explain retrieval and S-stage behavior with archived Nsight evidence.
+- [x] Complete matched cuBLAS and available FAISS GPU exact-retrieval baselines.
+- [ ] Complete the Nsight explanation with occupancy and achieved-bandwidth
+  counters; the archived Systems traces already establish kernel composition,
+  allocation overhead, and synchronization behavior.
 - [ ] Run multi-category, multi-ratio, multi-seed validation-based selection and
   one locked held-out evaluation.
-- [ ] Implement and measure a native FP16 device memory bank with FP32 accumulation.
-- [ ] Run fixed-rate arrivals and report p99/max, deadline misses, backlog, drops,
+- [x] Implement and measure a native FP16 device memory bank with FP32 accumulation.
+- [x] Run fixed-rate arrivals and report p99/max, deadline misses, backlog, drops,
   temperature, power, and sustained drift.
 - [ ] Regenerate every table, figure, claim audit, PDF, and source archive from
   the revised frozen evidence set.

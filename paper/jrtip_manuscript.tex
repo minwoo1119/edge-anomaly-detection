@@ -26,27 +26,28 @@ Engineering, Kumoh National Institute of Technology, Gumi, Republic of Korea \\
 \maketitle
 
 \begin{abstract}
-Memory-bank anomaly detectors can retain strong unsupervised detection
-accuracy, yet their deployment cost on edge hardware is easily understated
-when evaluation is restricted to the neural feature extractor. We implement a
+Memory-bank anomaly-detector cost is understated when evaluation is restricted
+to the neural feature extractor. We implement a
 hash-traced PatchCore runtime in C++17, TensorRT, and CUDA on an NVIDIA Jetson
-Orin Nano and measure the complete inference path, including preprocessing,
-data transfers, feature extraction, embedding layout conversion, exact
+Orin Nano and measure the inference path, including preprocessing,
+data transfers, feature extraction, layout conversion, exact
 nearest-neighbor retrieval, postprocessing, power, and energy. On the MVTec AD
-bottle category, FP16 reduces feature-extraction time from 20.212 to 3.785 ms,
-but end-to-end latency decreases by only 1.48\% because retrieval remains the
-dominant stage. Under a fixed data path, asynchronous tiled CUDA search reduces
-retrieval time by 35.70$\times$ and end-to-end latency by 28.43$\times$
-relative to CPU search. A staged system ablation achieves a steady-state
-interval of 482.350 ms, whereas a five-ratio coreset study reduces latency from
-992.520 to 72.093 ms and bank storage from 250.799 to 12.539 MB while preserving
-an image-level AUROC of 1.0. Across all 15 MVTec AD categories, the selected
-runtime achieves macro image- and pixel-level AUROCs of 0.983314 and 0.979761,
-respectively. In a 4,000-frame run lasting 33.94 min, it sustains 1.964
-images/s, with a 517.845 ms p95 interval, a maximum GPU temperature of
-63.906$^\circ$C, and no degradation beyond a predefined 5\% bound. These
-results demonstrate that real-time claims for edge anomaly detection must be
-grounded in complete-pipeline measurements rather than backbone timing alone.
+bottle category, FP16 reduces feature extraction from 20.212 to 3.785 ms, but
+end-to-end latency decreases by only 1.48\% with custom exact search. Under a
+controlled S0 data path, cuBLAS exact L2 search lowers
+end-to-end latency from 14,463.545 ms on CPU to 140.361 ms, a 103.05$\times$
+speedup and 3.73$\times$ improvement over the best custom CUDA backend. A
+FAISS GPU implementation reaches 139.385 ms and is faster at the largest
+tested bank, showing that backend choice depends on bank size.
+Native FP16 index storage halves the 10\% bank payload from 125.396 to
+62.698 MiB while preserving image/pixel AUROC and reducing energy by 13.81\%,
+although latency increases by 2.70\%. Across 15 categories, the 10\% runtime
+achieves macro image- and pixel-level AUROCs of 0.983314 and
+0.979761. A predeclared 30-minute fixed-rate experiment completes all 3,273
+frames at 550-ms arrivals with zero drops or deadline misses; response p99/max
+are 260.268/279.202 ms. A 100-ms stress condition overloads the bounded
+queue. Edge anomaly-detection claims therefore require joint
+measurement of accuracy, retrieval, storage, energy, and service behavior.
 \keywords{industrial anomaly detection \and PatchCore \and edge inference \and TensorRT \and CUDA \and real-time image processing}
 \end{abstract}
 
@@ -77,22 +78,23 @@ score. Specifically, it provides:
 \begin{enumerate}
 \item a hash-traced C++/TensorRT/CUDA runtime that measures stage-wise latency,
 accuracy, power, energy, memory, and artifact lineage across the full pipeline;
-\item controlled ablations of numerical precision, coreset ratio, exact
-retrieval backend, and the S0--S6 data path, including negative INT8 and
-transpose results;
+\item controlled exact-search comparisons among CPU, five custom CUDA kernels,
+cuBLAS, and FAISS GPU, with profiling that relates bank cardinality and data
+layout to end-to-end behavior;
+\item native FP16 GPU-bank storage with FP32 distance accumulation, evaluated
+for accuracy, nearest-neighbor agreement, memory, latency, power, and energy;
 \item category-wise validation over all 15 MVTec AD categories using
 independently trained 10\% coresets; and
-\item a sustained thermal and timing evaluation that separates pipeline interval
-from per-frame completion latency and identifies the evidence still needed for
-a fixed-rate deadline claim.
+\item bounded-queue, timestamped fixed-rate experiments that distinguish service
+time, response time, output interval, deadline misses, drops, and sustained
+thermal behavior.
 \end{enumerate}
 
-The results show that feature extraction can be reduced to a few milliseconds
-while exact retrieval still requires hundreds of milliseconds. For the tested
-bottle workload, the optimized system has p95 pipeline interval and completion
-latency below reference bounds of 550 ms and 1.1 s. The repeated-frame trace
-does not impose fixed-rate arrivals and therefore does not establish an
-all-frames deadline guarantee.
+The results show that feature extraction can be reduced to a few milliseconds,
+but an efficient exact-search library is necessary before optimizing pipeline
+overlap. For the declared bottle workload, the optimized runtime sustains
+550-ms arrivals for 30 minutes while every measured response remains below the
+1.1-s experimental bound.
 
 \section{Related work}\label{sec:related}
 \subsection{Industrial anomaly detection}
@@ -162,7 +164,7 @@ hashes match.
 \label{fig:pipeline}
 \end{figure*}
 
-\subsection{Exact CUDA retrieval}
+\subsection{Exact GPU retrieval}
 The direct kernel assigns threads to query--bank comparisons, with limited
 reduction efficiency and data reuse. The warp variant cooperatively reduces
 distances within each warp. The tiled kernel stages fragments of bank vectors
@@ -175,6 +177,13 @@ TensorRT emits channel-major NCHW data, whereas distance evaluation benefits
 from patch-major queries. A transpose-assisted backend consumes NCHW output on
 device for the GPU-resident S5 path. We retain its S0 result as a negative
 control because S0 already passes through host patch-major conversion.
+
+The cuBLAS backend evaluates squared L2 distance as
+$\lVert q\rVert_2^2+\lVert b\rVert_2^2-2q^\mathsf{T}b$, using SGEMM for the
+matrix product and FP32 reduction for the nearest neighbor. The FAISS backend
+uses \texttt{GpuIndexFlatL2}; its FP16-storage mode keeps the bank in half
+precision while query output and distance accumulation remain FP32. Both
+library backends perform exact search and are checked against the CPU result.
 
 \subsection{System stages and two deadlines}
 S0 uses transient device buffers and pageable synchronous copies. S1 retains
@@ -223,28 +232,35 @@ the recorded numerical tolerances.
 \subsection{Controlled ablations}
 The precision experiment fixes the 10\% FP32 bank and S5 retrieval path while
 varying the feature engine among FP32, FP16, and entropy-calibrated INT8.
-Calibration uses 100 normal training images. The bank-storage experiment
-deterministically serializes FP16 values from the FP32 export. For the coreset
-experiment, independent bottle models are trained with seed 42 at ratios of 1,
-2.5, 5, 10, and 20\%; the smaller banks are therefore not truncations of a
-single export.
+Calibration uses 100 normal training images. The native bank-storage experiment
+compares FP32 and FP16 FAISS GPU indices while retaining FP32 accumulation.
+For the coreset experiment, independent bottle models are trained with seed 42
+at ratios of 1, 2.5, 5, 10, and 20\%; the smaller banks are therefore not
+truncations of a single export.
 
 The retrieval experiment fixes FP16, the 10\% FP32 bank, S0, the executable,
-and the power mode, varying only the six exact-search backends. The system
-experiment fixes the transpose-assisted backend and varies S0--S6. The
-multi-category evaluation uses one independently trained seed-42 10\% bank for
-each category, the complete test split of that category, and three performance
-runs.
+and the power mode, varying CPU, five custom CUDA backends, and cuBLAS. A second
+clean-build comparison matches cuBLAS and FAISS GPU for 1, 10, and 20\% banks.
+The system experiment fixes the transpose-assisted custom backend and varies
+S0--S6. The multi-category evaluation uses one independently trained seed-42
+10\% bank for each category, the complete test split of that category, and
+three performance runs. The single-seed coreset study is exploratory; a
+deterministic development/held-out split and a multi-seed selection tool are
+provided, but their full 15-category matrix is not used to make a result claim
+in this article.
 
-\subsection{Sustained criterion}
-The final FP16/S6 path is evaluated over 4,000 measured bottle frames. Before
-analysis, operational degradation is defined as an increase of more than 5\%
-in mean pipeline interval between the first and last complete five-minute
-windows. The evaluated reference bounds are a 550 ms pipeline interval and a
-1.1 s completion time. The repeated-frame run captures observed timing and
-temperature behavior, but does not record fixed-rate arrivals, p99, maximum,
-deadline misses, queue growth, or dropped frames. The available
-\texttt{tegrastats} output does not provide a direct hardware-throttling flag.
+\subsection{Fixed-rate and sustained criteria}
+A producer submits timestamped frames to a bounded queue of depth eight using
+drop-newest behavior. Short 100-frame experiments use arrival periods of 100,
+250, 500, 550, and 1,000 ms and a 1.1-s response deadline. Response time is
+measured from scheduled arrival to completion, so queueing is included. Drops
+also count as deadline failures. Before the long run, the acceptance criterion
+is frozen as zero drops and misses, p99 and maximum response below 1.1 s,
+maximum queue depth at most one, queue-wait growth below 50 ms, and maximum
+temperature below 80$^\circ$C. The sustained experiment offers 3,273 repeated
+bottle frames at 550-ms intervals for approximately 30 min. Camera and storage
+acquisition are outside the measured boundary. The available
+\texttt{tegrastats} output provides no direct hardware-throttling flag.
 
 \section{Results}\label{sec:results}
 \subsection{Precision and coreset trade-offs}
@@ -269,9 +285,27 @@ INT8 & 0.6889 & 0.7615 & 2.703 & 523.076\\
 \end{tabular}
 \end{table}
 
-Serializing the bank in FP16 halves its stored payload, but runtime bank memory
-remains 125.396 MB because the current loader expands the values to FP32. No
-supported runtime speedup is observed from serialization alone.
+Native FP16 FAISS index storage halves the 10\% device-bank payload from
+125.396 to 62.698 MiB. Table~\ref{tab:bank} shows that image and pixel AUROC
+remain unchanged to the reported precision. Across all 83 test images, the raw
+score MAE is 0.002192; nearest-neighbor index agreement is 100\% for the
+representative normal image and 99.805\% for the broken-large image. FP16 bank
+storage reduces energy by 13.81\% but increases NN and end-to-end mean latency
+by 1.71\% and 2.70\%, respectively. Thus its measured benefit is memory and
+energy rather than speed.
+
+\begin{table}[t]
+\caption{Native FAISS GPU bank precision on bottle (three runs).}\label{tab:bank}
+\centering\scriptsize
+\begin{tabular}{lrrrrr}\hline
+Bank & Device & Pixel & NN & Total & J/image\\
+type & MiB & AUROC & ms & ms & \\\hline
+FP32 & 125.396 & 0.985455 & 68.610 & 138.888 & 1.610\\
+FP16 & 62.698 & 0.985455 & 69.785 & 142.640 & 1.388\\
+\hline
+\end{tabular}
+\end{table}
+
 Figure~\ref{fig:tradeoffs} also summarizes the coreset experiment. All five
 ratios preserve an image AUROC of 1.0, while pixel AUROC ranges from 0.984961
 to 0.985500. Reducing the ratio from 20\% to 1\% lowers mean latency from
@@ -287,38 +321,42 @@ bottle category and seed 42.
 \end{figure*}
 
 \subsection{Retrieval backend ablation}
-All six backends preserve image- and pixel-level AUROCs of 1.0 and 0.985452,
-respectively. Table~\ref{tab:backend} and Fig.~\ref{fig:backend} show that direct
-CUDA search is 3.28$\times$ faster end to end than CPU search. Warp reduction,
-tiling, and asynchronous tiling progressively reduce total latency to 844.294,
-613.777, and 510.285 ms. The best S0 backend provides a 35.70$\times$ retrieval
-speedup and a 28.43$\times$ end-to-end speedup over CPU, while reducing energy
-by 92.2\%.
+All seven backends preserve image AUROC 1.0 and pixel AUROC approximately
+0.985455. Table~\ref{tab:backend} and Fig.~\ref{fig:backend} show that custom
+kernel organization progressively reduces total latency, but the library
+baseline changes the conclusion: cuBLAS reaches 140.361 ms, 103.05$\times$
+faster than CPU and 3.73$\times$ faster than the best custom CUDA variant end
+to end. Its 1.565 J/image is 98.3\% below the CPU result.
 
 \begin{table}[t]
 \caption{Exact retrieval backend ablation (three runs).}\label{tab:backend}
 \centering\scriptsize
 \begin{tabular}{lrrr}\hline
 Backend & NN ms & Total ms & J/image\\\hline
-CPU & 14434.802 & 14505.975 & 94.681\\
-Direct CUDA & 4314.865 & 4420.934 & 70.795\\
-Warp & 735.978 & 844.294 & 9.541\\
-Tiled & 508.859 & 613.777 & 9.943\\
-Async tiled & 404.378 & 510.285 & 7.367\\
-Async tiled + transpose & 422.996 & 527.955 & 7.772\\
+CPU & 14395.536 & 14463.545 & 90.610\\
+Direct CUDA & 4315.330 & 4422.354 & 69.166\\
+Warp & 736.410 & 843.809 & 9.241\\
+Tiled & 523.054 & 625.913 & 10.116\\
+Async tiled & 441.627 & 542.195 & 6.907\\
+Async tiled + transpose & 422.215 & 524.181 & 8.062\\
+cuBLAS & 69.221 & 140.361 & 1.565\\
 \hline
 \end{tabular}
 \end{table}
 
-Adding transpose assistance makes S0 3.46\% slower than asynchronous tiling
-alone. This result is consistent with the evaluated data path: S0 already
-performs patch-major conversion on the host, whereas transpose assistance is
-intended for device-resident NCHW output.
+In the matched library comparison at the 10\% bank, cuBLAS and FAISS GPU reach
+68.584/68.728 ms NN and 138.594/139.385 ms end-to-end latency with equivalent
+accuracy. At 1\%, FAISS is faster end to end (65.262 versus 67.679 ms); at
+20\%, it is also faster (236.037 versus 247.137 ms). Nsight Systems attributes
+84.9\% of cold-trace GPU kernel time to SGEMM in both implementations and shows
+greater FAISS initialization allocation overhead. These data support a
+bank-size-dependent exact backend choice. Occupancy and achieved-bandwidth
+counters remain unavailable from the archived trace and are not inferred.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{Fig3.pdf}
-\caption{Controlled nearest-neighbor backend latency. A logarithmic axis exposes the large CPU and direct-CUDA gap.}
+\caption{Controlled exact-search latency. A logarithmic axis exposes both the CPU/custom-CUDA gap and the stronger cuBLAS baseline.}
 \label{fig:backend}
 \end{figure*}
 
@@ -382,29 +420,31 @@ TensorRT time remains within approximately 3.3--3.8 ms, whereas retrieval time
 ranges from 119.257 to 780.257 ms. Retrieval is therefore the dominant cost
 beyond the bottle category as well.
 
-\subsection{Sustained thermal and deadline behavior}
-The 4,000-frame run lasts 2,036.670 s. The mean pipeline interval is 509.168 ms
-and its p95 is 517.845 ms, corresponding to 1.964 images/s. Mean completion
-time is 1,018.309 ms, with a p95 of 1,031.660 ms. Both p95 values are below
-the evaluated 550 ms interval and 1.1 s completion reference bounds. Because
-the run does not model timestamped fixed-rate arrivals or record p99, maximum,
-miss rate, backlog, and drops, it does not show that every frame meets a
-response deadline.
+\subsection{Fixed-rate and sustained behavior}
+The short fixed-rate sweep identifies both stable and overloaded operating
+regions. At arrival periods of 250, 500, 550, and 1,000 ms, all 100 offered
+frames complete without drops or deadline misses. Their response p99 values
+are 217.810, 257.785, 273.890, and 271.448 ms, respectively. At 100 ms,
+however, only 79 of 100 frames complete, 21 are dropped, and 54 completed
+frames miss 1.1 s; counting drops, the failure rate is 75\%. Queue depth reaches
+eight and response time reaches 1,316.062 ms. This overload result demonstrates
+why isolated processing throughput cannot establish admission feasibility.
 
-The mean interval is 514.355 ms in the first complete five-minute window and
-507.128 ms in the last, a change of $-1.405$\% that remains within the
-predefined 5\% degradation criterion. The maximum GPU temperature is
-63.906$^\circ$C, and mean/peak input power is 14.014/15.939 W.
-Figure~\ref{fig:sustained} shows no progressive slowdown. A single 101\% GPU
-utilization sample is treated as a telemetry artifact rather than evidence of
-utilization above 100\%. Because no direct throttling flag is available, the
-inference is limited to stability in the observed performance and temperature
-measurements.
+The predeclared 550-ms sustained run lasts 1,799.838 s and completes all 3,273
+offered frames without a drop or deadline miss. Mean/p95/p99/maximum response
+times are 222.988/241.686/260.268/279.202 ms. Maximum queue depth is zero;
+queue-wait p99 and maximum are 0.597 and 0.857 ms, and first-to-last-quarter
+mean queue-wait growth is 0.003 ms. The mean output interval is 550.019 ms.
+Mean/peak input power is 5.107/10.810 W, energy including idle time is
+2.809 J per completed frame, and maximum temperature is 49.031$^\circ$C.
+All predeclared criteria are satisfied. Because no direct throttling flag is
+available, the conclusion is limited to the observed timing, queue, and
+temperature stability.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{Fig6.pdf}
-\caption{Five-minute sustained-run windows. Mean and p95 interval remain stable as GPU temperature reaches steady state.}
+\caption{Fixed-rate response p99/maximum and failure rate. The 100-ms condition overloads the queue; all slower tested periods have zero failures.}
 \label{fig:sustained}
 \end{figure*}
 
@@ -422,25 +462,24 @@ optimization can therefore improve throughput without improving response
 latency, and reporting only one of these metrics can reverse the apparent
 conclusion.
 
-This distinction also bounds the timing claim. The sustained experiment shows
-p95 values below 550 ms interval and 1.1 s completion references for the tested
-FP16/S6 bottle workload in the specified power mode. Fixed-rate deadline
-compliance remains untested. The experiment also does not demonstrate
-that every MVTec AD category meets those bounds: the S5 category means already
-span 164.050--906.637 ms. Nor does the absence of observed slowdown establish
-the absence of hardware throttling, because the available telemetry lacks a
-direct throttle indicator.
+This distinction also bounds the timing claim. The fixed-rate experiment shows
+zero failures for the tested bottle/FAISS S0 workload at 550-ms arrivals and a
+1.1-s response bound, whereas 100-ms arrivals overload the same bounded queue.
+The experiment does not demonstrate that every MVTec AD category meets those
+bounds: the earlier S5 category means already span 164.050--906.637 ms. Nor
+does the absence of observed slowdown establish the absence of hardware
+throttling, because the available telemetry lacks a direct throttle indicator.
 
 \subsection{Implications for memory-bank deployment}
-Two complementary levers govern exact retrieval. Kernel organization reduces
-the cost of each comparison, as shown by the progression from direct CUDA to
-warp, tiled, and asynchronous tiled search. Coreset reduction changes both the
-number of comparisons and the amount of stored state. In the bottle experiment,
-the 1\% bank dominates the tested larger banks with respect to image AUROC,
-latency, storage, and energy. Its pixel AUROC nevertheless differs slightly
-from those of the larger banks, and the comparison uses a single seed; the
-result should therefore be understood as a measured bottle-specific frontier,
-not a general prescription to use a 1\% coreset.
+Three complementary levers govern exact retrieval. Kernel organization reduces
+the cost of each comparison, while cuBLAS and FAISS show the benefit of strong
+vendor and library implementations. Bank precision reduces stored state, and
+coreset reduction changes both the number of comparisons and storage. In the
+bottle experiment, the 1\% bank dominates the tested larger banks with respect
+to image AUROC, latency, storage, and energy. Its pixel AUROC nevertheless
+differs slightly from those of the larger banks, and the comparison uses a
+single seed; it is a measured bottle-specific frontier rather than a general
+prescription to use a 1\% coreset.
 
 The multi-category results reinforce this interpretation. Feature-extraction
 time remains within a narrow few-millisecond range, while retrieval varies by
@@ -454,47 +493,51 @@ optimized as independent objectives.
 \subsection{Negative results and design boundaries}
 Several plausible optimizations fail under the tested conditions. Entropy-
 calibrated INT8 substantially reduces accuracy without eliminating the
-retrieval bottleneck. FP16 bank serialization reduces the file payload but not
-runtime memory because the loader expands the bank to FP32. Transpose
-assistance regresses under S0, where host-side conversion has already produced
-a patch-major layout, and a dedicated stream does not by itself reduce mean
-latency. These findings show that the benefit of a mechanism depends on the
-surrounding data path; isolated use of lower precision, asynchronous execution,
-or a specialized layout is not sufficient evidence of an end-to-end gain.
+retrieval bottleneck. Native FP16 bank storage halves the index payload and
+reduces energy, but does not improve latency on this workload. Transpose
+assistance has path-dependent behavior, and a dedicated stream does not by
+itself reduce mean latency. The strongest exact library baseline also exceeds
+the best custom kernel by 3.73$\times$. These findings show that the benefit of
+a mechanism depends on the surrounding data path; isolated use of lower
+precision, asynchronous execution, or a specialized layout is insufficient
+evidence of an end-to-end gain.
 
 \subsection{Limitations and future work}
-The study is limited to one embedded platform, MVTec AD, one backbone, custom
-exact brute-force retrieval, and a single training seed for each coreset condition.
-The power and timing results are specific to the stated device configuration,
-and the soft real-time envelope is specific to the bottle workload. The
-sustained test establishes stability over 33.94 min rather than indefinite
-operation, and the telemetry supports no direct conclusion about hardware
-throttling. These constraints limit both statistical and platform-level
-generalization.
+The study is limited to one embedded platform, MVTec AD, one backbone, and a
+single training seed for each reported coreset condition. The power and timing
+results are specific to the stated device configuration, and the fixed-rate
+envelope is specific to a repeated bottle image; camera and storage acquisition
+are excluded. Nsight Systems identifies kernel composition and synchronization,
+but occupancy and achieved-memory-bandwidth counters are not archived. The
+30-minute test does not establish indefinite operation, and telemetry supports
+no direct conclusion about hardware throttling.
 
-Future evaluation requires matched cuBLAS and, where feasible on Jetson ARM64,
-FAISS GPU exact-search baselines; validation-based multi-seed bank selection;
-a native FP16 device bank with FP32 accumulation; and fixed-rate arrivals with
-p99/max, misses, backlog, and drops. Additional industrial datasets, backbones,
-and edge platforms should then be examined. Comparisons with model-efficient detectors should be conducted
-on the same device and power mode, with matched input size and a common
-end-to-end measurement boundary, so that architectural efficiency is not
-confounded with experimental scope.
+The next statistical requirement is validation-based selection across multiple
+coreset ratios and random seeds for all categories, followed by exactly one
+locked held-out evaluation. The repository provides deterministic split
+manifests and resumable orchestration for this experiment, but no incomplete
+matrix is reported here. Additional industrial datasets, backbones, and edge
+platforms should then be examined. Comparisons with model-efficient detectors
+should use the same device, power mode, input size, and end-to-end measurement
+boundary so that architectural efficiency is not confounded with experimental
+scope.
 
 \section{Conclusion}\label{sec:conclusion}
 Deploying PatchCore on the Jetson Orin Nano is governed by the complete
 memory-bank pipeline rather than by TensorRT in isolation. FP16 reduces feature
-extraction to a few milliseconds but leaves exact retrieval dominant. Under
-the controlled S0 data path, CUDA kernel organization yields a 28.43$\times$
-end-to-end speedup over CPU search; coreset size then governs much of the
-remaining latency, storage, and energy. The selected runtime preserves strong
-aggregate accuracy across all 15 MVTec AD categories, while the 33.94 min
-repeated-frame bottle experiment shows stable p95 interval and completion
-latency without exceeding the predefined degradation bound. Fixed-rate
-deadline compliance remains to be tested. Complete-
-pipeline measurement, explicit deadline definitions, and traceable artifacts
-are therefore essential to support bounded real-time claims for memory-bank
-anomaly detection at the edge.
+extraction to a few milliseconds, after which exact retrieval dominates unless
+a strong library implementation is used. Under the controlled S0 data path,
+cuBLAS yields a 103.05$\times$ end-to-end speedup over CPU and a 3.73$\times$
+speedup over the best custom CUDA backend. FAISS provides comparable 10\%
+performance and improves at the largest tested bank. Native FP16 index storage
+halves bank memory and reduces energy while preserving bottle AUROC, although
+it does not reduce latency. The 10\% runtime preserves strong aggregate
+accuracy across all 15 categories. Finally, timestamped fixed-rate experiments
+expose overload at 100-ms arrivals and verify zero drops or deadline misses over
+30 min at the declared 550-ms arrival period. Complete-pipeline measurement,
+explicit arrival and response definitions, and traceable artifacts are
+essential to support bounded real-time claims for memory-bank anomaly detection
+at the edge.
 
 \section*{Statements and Declarations}
 \paragraph{Funding} \blankfield{Statement}

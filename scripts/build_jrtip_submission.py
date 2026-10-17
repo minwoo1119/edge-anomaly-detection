@@ -8,6 +8,7 @@ import csv
 import hashlib
 import json
 import shutil
+import statistics
 import subprocess
 import zipfile
 from pathlib import Path
@@ -44,7 +45,7 @@ def save(fig: plt.Figure, path: Path) -> None:
 
 def pipeline_figure(path: Path) -> None:
     fig, ax = plt.subplots(figsize=(7.0, 1.6))
-    labels = ["RGB input", "Preprocess", "TensorRT\nfeatures", "Exact CUDA\nretrieval", "Score + map"]
+    labels = ["RGB input", "Preprocess", "TensorRT\nfeatures", "Exact GPU\nretrieval", "Score + map"]
     xs = range(len(labels))
     for x, label in zip(xs, labels):
         ax.text(x, 0, label, ha="center", va="center", fontsize=9,
@@ -76,12 +77,25 @@ def tradeoff_figure(path: Path) -> None:
 
 
 def backend_figure(path: Path) -> None:
-    rows = read_csv(ROOT / "results/paper_mvtec15_complete/processed/nn_backend_aggregate.csv")
+    raw = read_csv(ROOT / "results/processed/revision_r1_d042_nn_backend_results.csv")
+    order = ["cpu", "cuda", "cuda_warp", "cuda_tiled", "cuda_tiled_async", "cuda_tiled_async_transpose", "cublas"]
+    rows = []
+    for backend in order:
+        group = [row for row in raw if row["nn_backend"] == backend]
+        if not group:
+            continue
+        rows.append({
+            "nn_backend": backend,
+            "nn_mean": statistics.fmean(float(row["nn_mean"]) for row in group),
+            "total_mean": statistics.fmean(float(row["total_mean"]) for row in group),
+        })
     labels = [row["nn_backend"].replace("cuda_tiled_async_transpose", "async+T").replace("cuda_tiled_async", "async").replace("cuda_tiled", "tiled").replace("cuda_warp", "warp").replace("cuda", "direct") for row in rows]
     fig, ax = plt.subplots(figsize=(7.0, 2.8))
     x = range(len(rows))
-    ax.bar(x, [float(row["total_mean"]) for row in rows], color="#72b7b2", label="Other stages")
-    ax.bar(x, [float(row["nn_mean"]) for row in rows], color="#4c78a8", label="NN search")
+    nn = [float(row["nn_mean"]) for row in rows]
+    other = [float(row["total_mean"]) - value for row, value in zip(rows, nn)]
+    ax.bar(x, nn, color="#4c78a8", label="NN search")
+    ax.bar(x, other, bottom=nn, color="#72b7b2", label="Other stages")
     ax.set_yscale("log")
     ax.set_ylabel("Latency (ms, log scale)")
     ax.set_xticks(list(x), labels, rotation=20, ha="right")
@@ -118,19 +132,19 @@ def category_figure(path: Path) -> None:
 
 
 def sustained_figure(path: Path) -> None:
-    rows = read_csv(ROOT / "results/processed/paper_bottle_s6_sustained_windows_01.csv")
-    complete = [row for row in rows if float(row["end_seconds"]) - float(row["start_seconds"]) >= 297]
-    x = [float(row["start_seconds"]) / 60 for row in complete]
+    rows = read_csv(ROOT / "results/processed/r4_fixed_rate_sweep.csv")
+    x = [float(row["arrival_period_ms"]) for row in rows]
     fig, ax = plt.subplots(figsize=(7.0, 2.8))
-    ax.plot(x, [float(row["interval_mean_ms"]) for row in complete], "o-", color="#4c78a8", label="Mean interval")
-    ax.plot(x, [float(row["interval_p95_ms"]) for row in complete], "s--", color="#f58518", label="p95 interval")
-    ax.set_xlabel("Elapsed time (min)")
-    ax.set_ylabel("Pipeline interval (ms)")
+    ax.plot(x, [float(row["response_p99_ms"]) for row in rows], "o-", color="#4c78a8", label="Response p99")
+    ax.plot(x, [float(row["response_max_ms"]) for row in rows], "s--", color="#f58518", label="Response max")
+    ax.axhline(1100, color="#777777", linestyle=":", label="Deadline")
+    ax.set_xlabel("Arrival period (ms)")
+    ax.set_ylabel("Response time (ms)")
     ax2 = ax.twinx()
-    ax2.plot(x, [float(row["gpu_temperature_max_c"]) for row in complete], "^-", color="#e45756", label="Max GPU temp.")
-    ax2.set_ylabel("GPU temperature (C)")
+    ax2.plot(x, [100 * float(row["deadline_failure_rate_including_drops"]) for row in rows], "^-", color="#e45756", label="Failure rate")
+    ax2.set_ylabel("Deadline failure rate (\%)")
     lines = ax.get_lines() + ax2.get_lines()
-    ax.legend(lines, [line.get_label() for line in lines], frameon=False, ncol=3, fontsize=8)
+    ax.legend(lines, [line.get_label() for line in lines], frameon=False, ncol=2, fontsize=8)
     save(fig, path)
 
 
