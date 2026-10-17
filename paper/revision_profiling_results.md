@@ -11,7 +11,20 @@ identify operator composition, launch counts, transfers, and synchronization.
 Nsight Compute did not create a report because Jetson performance counters
 require elevated privileges. Each profile directory contains the exact
 `sudo ncu` command needed to complete hardware-counter collection. Occupancy
-and achieved-memory-bandwidth claims remain pending until those reports exist.
+and achieved-memory-bandwidth claims for cuBLAS and FAISS remain pending until
+those reports exist.
+
+An earlier full Nsight Compute capture is available for the custom tiled
+kernel at commit `1a9ca6e` in
+`results/profiling/tiled_1a9ca6e/kernel.ncu-rep`. Under profiler replay, the
+kernel reports 594.97 ms duration, 88.47% achieved occupancy, 41.86% memory
+throughput, and 56.48% SM throughput. Long-scoreboard stalls account for about
+55.5% of the average interval between issued warp instructions, while no warp
+is eligible in 43.41% of scheduler cycles. These counters support a
+memory-access-latency diagnosis despite high occupancy. The replayed duration
+is not substituted for the warmed benchmark result. Library-kernel occupancy
+and bandwidth counters remain pending because the cuBLAS/FAISS reports still
+require elevated profiling permission.
 
 ## Kernel composition
 

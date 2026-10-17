@@ -352,6 +352,13 @@ accuracy. At 1\%, FAISS is faster end to end (65.262 versus 67.679 ms); at
 greater FAISS initialization allocation overhead. These data support a
 bank-size-dependent exact backend choice. Occupancy and achieved-bandwidth
 counters remain unavailable from the archived trace and are not inferred.
+For the custom tiled kernel, a separate full Nsight Compute capture reports
+88.47\% achieved occupancy, 41.86\% memory throughput, and 56.48\% SM
+throughput. Long-scoreboard stalls account for approximately 55.5\% of the
+average interval between warp instructions, and no warp is eligible in 43.41\%
+of scheduler cycles. The replayed 594.97-ms duration is not used as a warmed
+latency result; the counters indicate memory-access latency despite high
+occupancy, rather than an occupancy shortage.
 
 \begin{figure*}[t]
 \centering
@@ -367,7 +374,12 @@ allocation alone has little effect. Pinned staging at S2 produces the largest
 isolated reduction in single-frame latency before S5. Neither S4 nor S5 lowers
 the mean latency with the already optimized retrieval kernel; consequently,
 these CUDA mechanisms should not be interpreted as independently sufficient
-optimizations.
+optimizations. S4 introduces a stream but no independent operation that can
+overlap the dominant exact search, so stream management changes synchronization
+without removing work. S5 removes host output transfer and reshape, but the
+saved time is small beside retrieval and requires a different device-resident
+layout path. These results explain why a mechanism that enables overlap does
+not itself guarantee overlap or lower completion latency.
 
 \begin{table}[t]
 \caption{S0--S6 system ablation.}\label{tab:system}
