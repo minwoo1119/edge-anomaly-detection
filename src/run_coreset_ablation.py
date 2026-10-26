@@ -57,6 +57,29 @@ def completed_variant(variant_root: Path, category: str, ratio: float, seed: int
     )
 
 
+def reusable_training_artifacts(
+    checkpoint: Path,
+    training_manifest: Path,
+    category: str,
+    ratio: float,
+    seed: int,
+) -> bool:
+    if not checkpoint.is_file() or not training_manifest.is_file():
+        return False
+    try:
+        document = json.loads(training_manifest.read_text(encoding="utf-8"))
+        recorded_ratio = Decimal(str(document["model"]["coreset_ratio"]))
+        recorded_hash = document["checkpoint"]["sha256"]
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        return False
+    return (
+        document.get("dataset", {}).get("category") == category
+        and recorded_ratio == Decimal(str(ratio))
+        and document.get("runtime", {}).get("seed") == seed
+        and recorded_hash == sha256(checkpoint)
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-root", type=Path, required=True)
@@ -89,48 +112,46 @@ def main() -> None:
         if completed_variant(variant_root, args.category, ratio, args.seed):
             print(f"skip_complete={variant_root}", flush=True)
             continue
-        if variant_root.exists():
-            if not args.resume:
-                parser.error(f"variant output already exists: {variant_root}")
-            shutil.rmtree(variant_root)
         checkpoint = variant_root / "models" / f"patchcore_{args.category}_{tag}.ckpt"
         training_manifest = variant_root / "results" / "metadata" / "training.json"
         deployment_root = variant_root / "deployment"
-        run(
-            [
-                python,
-                str(source / "train.py"),
-                "--dataset-root",
-                str(args.dataset_root),
-                "--category",
-                args.category,
-                "--checkpoint",
-                str(checkpoint),
-                "--manifest",
-                str(training_manifest),
-                "--coreset-ratio",
-                f"{ratio:.12g}",
-                "--accelerator",
-                args.accelerator,
-                "--devices",
-                str(args.devices),
-                "--seed",
-                str(args.seed),
-            ]
-        )
-        bundle = deployment_root / f"{args.category}_artifacts.zip"
-        marker = {
-            "schema_version": 1,
-            "completed_at": datetime.now(timezone.utc).isoformat(),
-            "category": args.category,
-            "coreset_ratio": ratio,
-            "seed": args.seed,
-            "bundle": str(bundle.resolve()),
-            "bundle_sha256": sha256(bundle),
-        }
-        (variant_root / "COMPLETE.json").write_text(
-            json.dumps(marker, indent=2) + "\n", encoding="utf-8"
-        )
+        reuse_training = False
+        if variant_root.exists():
+            if not args.resume:
+                parser.error(f"variant output already exists: {variant_root}")
+            reuse_training = reusable_training_artifacts(
+                checkpoint, training_manifest, args.category, ratio, args.seed
+            )
+            if reuse_training:
+                print(f"resume_from_training={variant_root}", flush=True)
+                shutil.rmtree(deployment_root, ignore_errors=True)
+                (variant_root / "COMPLETE.json").unlink(missing_ok=True)
+            else:
+                print(f"rebuild_incomplete={variant_root}", flush=True)
+                shutil.rmtree(variant_root)
+        if not reuse_training:
+            run(
+                [
+                    python,
+                    str(source / "train.py"),
+                    "--dataset-root",
+                    str(args.dataset_root),
+                    "--category",
+                    args.category,
+                    "--checkpoint",
+                    str(checkpoint),
+                    "--manifest",
+                    str(training_manifest),
+                    "--coreset-ratio",
+                    f"{ratio:.12g}",
+                    "--accelerator",
+                    args.accelerator,
+                    "--devices",
+                    str(args.devices),
+                    "--seed",
+                    str(args.seed),
+                ]
+            )
         run(
             [
                 python,
@@ -150,6 +171,24 @@ def main() -> None:
                 "--device",
                 "cuda" if args.accelerator == "gpu" else "cpu",
             ]
+        )
+        bundle = deployment_root / f"{args.category}_artifacts.zip"
+        checksum = bundle.with_suffix(bundle.suffix + ".sha256")
+        if not bundle.is_file() or not checksum.is_file():
+            raise RuntimeError(
+                f"Deployment pipeline did not create the expected bundle and checksum: {bundle}"
+            )
+        marker = {
+            "schema_version": 1,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "category": args.category,
+            "coreset_ratio": ratio,
+            "seed": args.seed,
+            "bundle": str(bundle.resolve()),
+            "bundle_sha256": sha256(bundle),
+        }
+        (variant_root / "COMPLETE.json").write_text(
+            json.dumps(marker, indent=2) + "\n", encoding="utf-8"
         )
     print(f"coreset_variants={len(args.ratios)}")
     print(f"output_root={args.output_root}")
